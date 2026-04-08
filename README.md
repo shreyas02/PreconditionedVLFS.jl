@@ -26,6 +26,14 @@ bash run/warmup.sh
 
 `run/warmup.sh` installs the project dependencies, selects the system MPI binary through `MPIPreferences`, and runs standard Julia precompilation.
 
+## Build the cpp source files related to the Gridap Trilinos interface
+
+From the project root:
+
+```bash
+bash run/buildcpp.sh
+```
+
 ## Build Sysimage
 
 To build the MPI-aware sysimage from the warmup traces, run:
