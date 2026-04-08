@@ -1,30 +1,76 @@
-# VLFSPreconditioners
+# PreconditionedVLFS.jl
 
-This code base is using the [Julia Language](https://julialang.org/) and
-[DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
-to make a reproducible scientific project named
-> VLFSPreconditioners
+`PreconditionedVLFS.jl` is a local Julia project for VLFS preconditioning experiments. This repository is used as a project workspace rather than a registered Julia package, with shell scripts in `run/` driving setup, sysimage generation, and the main cases.
 
-It is authored by Shreyas Prashanth.
+## Prerequisites
 
-To (locally) reproduce this project, do the following:
+- Julia `1.10.x`
+- System OpenMPI available to Julia and Trilinos
+- A Trilinos installation path exported through `run/env.sh`
 
-0. Download this code base. Notice that raw data are typically not included in the
-   git-history and may need to be downloaded independently.
-1. Open a Julia console and do:
-   ```
-   julia> using Pkg
-   julia> Pkg.add("DrWatson") # install globally, for using `quickactivate`
-   julia> Pkg.activate("path/to/this/project")
-   julia> Pkg.instantiate()
-   ```
+## Setup
 
-This will install all necessary packages for you to be able to run the scripts and
-everything should work out of the box, including correctly finding local paths.
+From the project root:
 
-You may notice that most scripts start with the commands:
-```julia
-using DrWatson
-@quickactivate "VLFSPreconditioners"
+```bash
+cp run/env.example.sh run/env.sh
 ```
-which auto-activate the project and enable local path handling from DrWatson.
+
+Edit `run/env.sh` and set `TRILINOS_ROOT` for your machine. Add any required module loads or environment exports there as well.
+
+Then prepare the Julia environment and MPI preferences:
+
+```bash
+bash run/warmup.sh
+```
+
+`run/warmup.sh` installs the project dependencies, selects the system MPI binary through `MPIPreferences`, and runs standard Julia precompilation.
+
+## Build Sysimage
+
+To build the MPI-aware sysimage from the warmup traces, run:
+
+```bash
+bash run/build_sysimage.sh
+```
+
+This script:
+
+- verifies that Julia is configured to use system OpenMPI
+- traces the serial and MPI warmup cases
+- merges the generated precompile statements
+- builds a sysimage for `PreconditionedVLFS`
+
+The output sysimage is written to:
+
+```text
+compile/PreconditionedVLFS.so
+```
+
+## Trilinos
+
+Expected Trilinos setup:
+
+- Trilinos `16.10`
+- Required libraries: `Amesos2`, `Teuchos`, `Tpetra`, `Belos`, `ShyLU_DDFROSch`, `Xpetra`, `MueLu`
+- SuiteSparse `7.8.2`
+
+For the parallel cases, solver settings can be adjusted through the XML files in `data/`.
+
+## Run Cases
+
+Run the provided shell entrypoints from the project root:
+
+```bash
+bash run/toyrichardson.sh
+bash run/wsi2d.sh
+bash run/wsi3d.sh
+bash run/scaling_2d_strong.sh
+bash run/scaling_2d_weak.sh
+bash run/scaling_3d_strong.sh
+bash run/scaling_3d_weak.sh
+```
+
+Adjust the number of MPI processes by editing the corresponding shell script before running it.
+
+The run scripts use the sysimage at `compile/PreconditionedVLFS.so`.
