@@ -3,8 +3,6 @@ uuid = "c1ab05e0-5e6d-4449-94c4-04e9a5894fcd"
 authors = ["Shreyas Prashanth"]
 
 [deps]
-MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -17,6 +15,8 @@ GridapSolvers = "6d3209ee-5e3c-4db7-a716-942eb12ed534"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 PartitionedArrays = "5a9dfac6-5c52-46f7-8278-5e2210713be9"
@@ -28,12 +28,16 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 gmsh_jll = "630162c2-fc9b-58b3-9910-8442a8a132e6"
 libcxxwrap_julia_jll = "3eaa8342-bff7-56a5-9981-c04077f7cee7"
 
+[compat]
+gmsh_jll = "=4.9.3"
+DrWatson = "2.19.1"
+Gridap = "0.19.6"
+GridapDistributed = "0.4.10"
+GridapSolvers = "0.6.1"
+PackageCompiler = "2.2.5"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test"]
-
-[compat]
-DrWatson = "2.19.1"
-julia = "1.10.5"

@@ -10,10 +10,10 @@ source ./run_slurm/env.sh
 
 julia --project=. -e '
     using Pkg
-    Pkg.instantiate()
-    Pkg.precompile()
+    Pkg.resolve()
     using MPIPreferences
     MPIPreferences.use_system_binary()
+    Pkg.precompile()
 '
 
 julia --project=. <<'JULIA'

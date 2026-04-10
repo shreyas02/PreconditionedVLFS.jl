@@ -9,8 +9,11 @@ julia --project=. -e '
     using DrWatson
     @quickactivate "PreconditionedVLFS"
 
+    using Pkg
+    Pkg.instantiate()
     using MPIPreferences
     MPIPreferences.use_system_binary()
+    Pkg.precompile()
 '
 
 julia --project=. <<'JULIA'
