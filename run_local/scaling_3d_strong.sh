@@ -1,6 +1,7 @@
 #!/bin/bash
+# Run this script from the PreconditionedVLFS.jl directory
 
-source ./run/env.sh
+source ./run_local/env.sh
 
 mpiexecjl -n 8 julia --project=. -J compile/PreconditionedVLFS.so test/periodic3d_test_strong.jl &> output_8cores.txt
 mpiexecjl -n 6 julia --project=. -J compile/PreconditionedVLFS.so test/periodic3d_test_strong.jl &> output_6cores.txt

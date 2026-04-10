@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-source ./run/env.sh
+source ./run_local/env.sh
 
 TRACE_DIR="${ROOT_DIR}/compile/traces"
 SERIAL_TRACE="${TRACE_DIR}/serial_trace.jl"
@@ -23,8 +23,8 @@ julia --project=. -e '
 julia --project=. -e '
     using MPIPreferences
     println("MPIPreferences binary=$(MPIPreferences.binary), abi=$(MPIPreferences.abi)")
-    if string(MPIPreferences.binary) != "system" || string(MPIPreferences.abi) != "OpenMPI"
-        error("Expected system OpenMPI before tracing and building the sysimage.")
+    if string(MPIPreferences.binary) != "system"
+        error("Expected system MPI before tracing and building the sysimage.")
     end
 '
 

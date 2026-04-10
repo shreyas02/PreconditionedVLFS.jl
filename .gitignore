@@ -10,7 +10,8 @@
 Manifest.toml
 docs/build/
 src/cppcode/build/
-run/env.sh
+*/env.sh
+slrum_jobs/job*
 
 *.vtu
 *.pvtu

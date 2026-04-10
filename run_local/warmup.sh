@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run this script from the PreconditionedVLFS.jl directory
 
-source ./run/env.sh
+source ./run_local/env.sh
 
 set -euo pipefail
 
@@ -29,4 +29,3 @@ julia --project=. <<'JULIA'
 JULIA
 
 echo "Warmup complete: project instantiated, precompiled, and configured for system MPI."
-echo "Build the MPI-aware sysimage separately with: bash run/build_sysimage.sh"
