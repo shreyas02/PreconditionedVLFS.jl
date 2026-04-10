@@ -15,6 +15,6 @@ echo "Running WSI 3D test (8 ranks)"
 srun --mpi=pmix --ntasks=8 julia --project=. \
     -J compile/PreconditionedVLFS.so \
     test/wsi3dtest.jl \
-    > "${ROOT_DIR}/slrum_jobs/wsi_3d.log" 2>&1
+    > "${ROOT_DIR}/slurm_jobs/wsi_3d.log" 2>&1
 
 echo "WSI 3D test completed."

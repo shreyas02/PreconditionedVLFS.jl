@@ -13,7 +13,7 @@ for n in 8 6 4 2; do
     srun --mpi=pmix --ntasks="${n}" julia --project=. \
         -J compile/PreconditionedVLFS.so \
         test/periodic2d_test_strong.jl \
-        > "${ROOT_DIR}/slrum_jobs/periodic2d_test_strong_${n}cores.log" 2>&1
+        > "${ROOT_DIR}/slurm_jobs/periodic2d_test_strong_${n}cores.log" 2>&1
 done
 
 echo "Strong scaling test for 2D completed."

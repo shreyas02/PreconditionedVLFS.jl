@@ -16,6 +16,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # 2. Find Dependencies & Set Compilers BEFORE defining targets
 # -------------------------------------------------------------------
 # Get Trilinos
+if(DEFINED ENV{Trilinos_DIR} AND NOT "$ENV{Trilinos_DIR}" STREQUAL "")
+  set(Trilinos_DIR "$ENV{Trilinos_DIR}")
+endif()
+
 find_package(Trilinos REQUIRED COMPONENTS Amesos2 Teuchos Tpetra Belos ShyLU_DDFROSch Xpetra)
 
 # Find MPI

@@ -9,6 +9,9 @@ cd "${ROOT_DIR}"
 source ./run_slurm/env.sh
 
 julia --project=. -e '
+    using Pkg
+    Pkg.instantiate()
+    Pkg.precompile()
     using MPIPreferences
     MPIPreferences.use_system_binary()
 '

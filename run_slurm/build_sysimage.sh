@@ -38,7 +38,7 @@ echo "Tracing serial warmup into ${SERIAL_TRACE}"
 julia --project=. --trace-compile="${SERIAL_TRACE}" compile/trace_serial_warmup.jl
 
 echo "Tracing MPI warmups with 2 ranks"
-srun -n 2 bash -lc '
+srun --mpi=pmix -n 2 bash -lc '
     set -euo pipefail
     rank="${SLURM_PROCID}"
     trace_file="compile/traces/mpi_rank_${rank}.jl"
@@ -52,7 +52,7 @@ julia --project=. compile/build_sysimage.jl
 
 echo "Verifying sysimage can load MPI"
 
-srun -n 1 julia --project=. -J compile/PreconditionedVLFS.so -e '
+srun --mpi=pmix -n 1 julia --project=. -J compile/PreconditionedVLFS.so -e '
     using MPI
     MPI.Init()
     println("sysimage MPI ok on rank ", MPI.Comm_rank(MPI.COMM_WORLD))

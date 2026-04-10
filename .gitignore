@@ -11,7 +11,7 @@ Manifest.toml
 docs/build/
 src/cppcode/build/
 */env.sh
-slrum_jobs/job*
+slurm_jobs/job*
 
 *.vtu
 *.pvtu
