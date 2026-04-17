@@ -8,9 +8,7 @@ cd "${ROOT_DIR}"
 
 source ./run_slurm/env.sh
 
-echo "Running WSI 2D test (8 ranks)"
-
-srun --mpi=pmix --ntasks=8 julia --project=. \
+srun --mpi=pmix --ntasks="${SLURM_NTASKS}" julia --project=. \
     -J compile/PreconditionedVLFS.so \
     test/wsi2dtest.jl \
     > "${ROOT_DIR}/slurm_jobs/wsi_2d.log" 2>&1

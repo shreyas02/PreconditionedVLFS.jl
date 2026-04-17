@@ -7,32 +7,35 @@
     case::String = "test"
 
     # Geometrical Parameters
-    H::Float64 = 10
-    Lf::Float64 = 24*H
-    hs::Float64 = 0.01
-    meshpath::String = datadir("wsi_2d", "model", "mesh_wsi_2d_1.msh")
+    H::Float64
+    Lm::Float64
+    Lf::Float64
+    hs::Float64
+    meshpath::String
     
     # Damping Parameters
-    Lfd::Float64 = 0.0
-    Lfd1::Float64 = 0.0
-    Ld::Float64 = Lf
-    Ld1::Float64 = Lf
+    Lfd::Float64
+    Lfd1::Float64
+    Ld::Float64
+    Ld1::Float64
 
     # Wave Parameters
-    kλ::Float64 = 3.0
-    η₀::Float64 = 0.01
-    ϕ::Float64 = 0.0
+    kλ::Float64
+    η₀::Float64
+    ϕ::Float64
+    ω::Float64
 
     # Time Numerics
-    ρ∞::Float64 = 0.5
-    dt::Float64 = 0.1
-    t0::Float64 = 0.0
-    tF::Float64 = dt
+    ρ∞::Float64
+    dt::Float64
+    t0::Float64
+    tF::Float64
 
     # Physical Parameters
-    ρf::Float64 = 1000.0 # Fluid density
-    ρs::Float64 = 100.0 # Solid density
-    g::Float64 = 9.81 # Acceleration due to gravity
+    ρf::Float64
+    ρs::Float64
+    g::Float64
+    T::Float64
 
     # Robin parameter
     αf::Float64 =
@@ -59,10 +62,6 @@ function wsi2d(distribute, parts, params::WSI2D_params)
 
     # Unpack the parameters
     @unpack_WSI2D_params params
-
-    # Physical Parameters
-    T = 0.9*ρf*g
-    ω = sqrt(g*kλ*tanh(kλ*H))
     
     # Defining the model
     model = UnstructuredDiscreteModel(GmshDiscreteModel(ranks, meshpath, renumber=false))
@@ -259,7 +258,7 @@ function wsi2d(distribute, parts, params::WSI2D_params)
     # Storing initial conditions in the pvd file 
     @vtk pvd_Ωf[0] = createvtk(Ωf,"$(vtk_dir)/results_fluids_in_twoD_0",cellfields = ["u" => x_initial[3], "pressure" => x_initial[4]],)
     @vtk pvd_Σs[0] = createvtk(Σs,"$(vtk_dir)/results_solids_in_twoD_0",cellfields = ["displacement" => x_initial[1]],)
-    @vtk pvd_Σfs[0] = createvtk(Σfs,"$(vtk_dir)/results_freesurface_in_twoD_0" * ".vtu",cellfields = ["FreeSurface" => x_initial[2]],)
+    @vtk pvd_Σfs[0] = createvtk(Σfs,"$(vtk_dir)/results_freesurface_in_twoD_0",cellfields = ["FreeSurface" => x_initial[2]],)
     end # Ending the postprocessing initial values timer
 
     end # Ending the model and setup timer

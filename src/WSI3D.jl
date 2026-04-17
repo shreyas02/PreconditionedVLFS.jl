@@ -7,32 +7,36 @@
     case::String = "test"
 
     # Geometrical Parameters
-    H::Float64 = 10
-    Lf::Float64 = 9 * pi * H
-    hs::Float64 = 0.01
+    H::Float64
+    Lm::Float64
+    Lf::Float64
+    Ly::Float64
+    hs::Float64
     meshpath::String = datadir("wsi_3d", "model", "mesh_wsi_3d_1.msh")
     
     # Damping Parameters
-    Lfd::Float64 = 0.0
-    Lfd1::Float64 = 0.0
-    Ld::Float64 = Lf
-    Ld1::Float64 = Lf
+    Lfd::Float64
+    Lfd1::Float64
+    Ld::Float64
+    Ld1::Float64
 
-    # Wave Parameters
-    kλ::Float64 = 3.0
-    η₀::Float64 = 0.01
-    ϕ::Float64 = 0.0
-
-    # Time Numerics
-    ρ∞::Float64 = 0.5
-    dt::Float64 = 0.1
-    t0::Float64 = 0.0
-    tF::Float64 = dt
+    # Temporal parameters
+    ρ∞::Float64
+    dt::Float64
+    t0::Float64
+    tF::Float64
 
     # Physical Parameters
-    ρf::Float64 = 1000.0 # Fluid density
-    ρs::Float64 = 100.0 # Solid density
-    g::Float64 = 9.81 # Acceleration due to gravity
+    ρf::Float64
+    ρs::Float64
+    g::Float64
+    T::Float64
+
+    # Wave Parameters
+    kλ::Float64
+    η₀::Float64
+    ϕ::Float64
+    ω::Float64
 
     # Robin parameter
     αf::Float64 =
@@ -59,10 +63,6 @@ function wsi3d(distribute, parts, params::WSI3D_params)
 
     # Unpack the parameters
     @unpack_WSI3D_params params
-
-    # Physical Parameters
-    T = 0.9*ρf*g
-    ω = sqrt(g*kλ*tanh(kλ*H))
     
     # Defining the model
     model = UnstructuredDiscreteModel(GmshDiscreteModel(ranks, meshpath, renumber=false))
@@ -179,7 +179,6 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     X = MultiFieldFESpace([D, Dfs, U, P]; style = mfs) # Trial Multifield
 
     # Time stepping parameters for generalized alpha method
-    ρ∞ = 0.5 # Spectral radius at infinity
 
     # Damping function
     function α(x)

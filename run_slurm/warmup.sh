@@ -23,6 +23,7 @@ patched_libs = [
     PackageSpec(url="https://github.com/shreyas02/Gridap.jl", rev="issue-1191"),
     PackageSpec(url="https://github.com/shreyas02/GridapDistributed.jl", rev="preconditioner"),
     PackageSpec(url="https://github.com/shreyas02/GridapSolvers.jl.git", rev="richardson_bugfix_v0.6.1"),
+    PackageSpec(url="https://github.com/Kyjor/FixedPointNumbers.jl",rev="167969b",),
     PackageSpec(name="PackageCompiler"),
 ]
 

@@ -2,8 +2,8 @@ module Periodic2DSetup
 
 using PreconditionedVLFS
 using PartitionedArrays, MPI
-using DrWatson, DataFrames
-using Plots, TimerOutputs
+using DrWatson, TimerOutputs
+using Plots, DataFrames
 
 function warmup()
     with_mpi() do distribute
@@ -30,7 +30,7 @@ function warmup()
 end
 
 function strong_scaling()
-    
+
     with_mpi() do distribute
         # Generate ranks
         parts = (MPI.Comm_size(MPI.COMM_WORLD),1)
@@ -118,6 +118,8 @@ function strong_scaling()
 end
 
 function weak_scaling()
+
+    @eval using Plots, DataFrames
     
     with_mpi() do distribute
         # Generate ranks

@@ -2,8 +2,12 @@ module WSI2DSetup
 
 using PreconditionedVLFS
 using PartitionedArrays, MPI
-using DrWatson, DataFrames
-using Plots, TimerOutputs
+using DrWatson
+using TimerOutputs
+using Roots
+
+include("mesh_wsi_2d_warmup.jl")
+using .WSI2DMesh_warmup
 
 include("mesh_wsi_2d_1.jl")
 using .WSI2DMesh1
@@ -11,48 +15,102 @@ using .WSI2DMesh1
 function warmup()
     with_mpi() do distribute
         # Generate ranks
-        parts = (MPI.Comm_size(MPI.COMM_WORLD),1)
+        parts = (MPI.Comm_size(MPI.COMM_WORLD), 1)
         ranks = distribute(LinearIndices((prod(parts),)))
 
-        # Construction of the required parameters
-
         # Case number
-        case = "warmup"
+        case_name = "warmup"
 
+        # Geometric parameters
         H = 1.0
-        meshpath = WSI2DMesh1.create_mesh(ranks, H)
+        Lm = 1.0
+        Lf = 4.0
+        hs = 0.01
+        meshpath = WSI2DMesh_warmup.create_mesh(ranks)
 
-        case = WSI2D_params(
+        # Damping parameters
+        Lfd = 0.0
+        Lfd1 = 0.0
+        Ld = 4.0
+        Ld1 = 4.0
+
+        # Temporal parameters
+        ρ∞ = 0.5
+        t0 = 0.0
+        tF = 0.1
+        dt = 0.1
+
+        # Physical parameters
+        ρf = 1000.0 # Fluid density
+        ρs = 100.0 # Solid density
+        g = 9.81 # Acceleration due to gravity
+        T = 0.9 * ρf * g # Solid stiffness parameter
+
+        # Wave parameters
+        kλ = 3.0
+        η₀ = 0.01
+        ϕ = 0.0
+        ω = sqrt(g * kλ * tanh(kλ * H)) # Wave frequency
+
+        # Post-processing parameters
+        vtkoutput = false
+
+        params = WSI2D_params(
+            # MPI parameters and case name
             nprocs = MPI.Comm_size(MPI.COMM_WORLD),
             rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
-            case = case,
+            case = case_name,
+
+            # Geometric parameters
             H = H,
+            Lm = Lm,
+            Lf = Lf,
+            hs = hs,
             meshpath = meshpath,
-            ρ∞ = 0.5,
-            t0 = 0.0,
-            tF = 0.1,
-            dt = 0.1,
-            vtkoutput = false,
+
+            # Damping parameters
+            Lfd = Lfd,
+            Lfd1 = Lfd1,
+            Ld = Ld,
+            Ld1 = Ld1,
+
+            # Temporal parameters
+            ρ∞ = ρ∞,
+            t0 = t0,
+            tF = tF,
+            dt = dt,
+
+            # Physical parameters
+            ρf = ρf, # Fluid density
+            ρs = ρs, # Solid density
+            g = g, # Acceleration due to gravity
+            T = T, # Solid stiffness parameter
+
+            # Wave parameters
+            kλ = kλ,
+            η₀ = η₀,
+            ω = ω, # Wave frequency
+            ϕ = ϕ,
+
+            # Post-processing parameters
+            vtkoutput = vtkoutput,
         )
 
         # Loading the case and running the code
         #  not using produce_or_load here since we want to ensure the warmup runs every times
-        _ = wsi2d(distribute, parts, case)
+        _ = wsi2d(distribute, parts, params)
     end
 end
 
 function case_1()
     with_mpi() do distribute
-
         # Generate ranks
-        parts = (MPI.Comm_size(MPI.COMM_WORLD),1)
+        parts = (MPI.Comm_size(MPI.COMM_WORLD), 1)
         ranks = distribute(LinearIndices((prod(parts),)))
 
         # Function to run the code
-        function run_src(params ::WSI2D_params)
-            
+        function run_src(params::WSI2D_params)
             solver_stats = wsi2d(distribute, parts, params)
-
             config_dict = Dict(string(k) => v for (k, v) in DrWatson.struct2dict(params))
 
             return merge(
@@ -65,56 +123,87 @@ function case_1()
                 ))
         end
 
-        # Construction of the required parameters
-
-        # Case number
-        case = "case_1"
+        case_name = "case_1"
 
         # Geometric parameters
         H = 10.0
+        Lm = 2 * H
+        Lf = 24 * Lm
+        hs = 0.01
         meshpath = WSI2DMesh1.create_mesh(ranks, H)
-        Lf = 48*H
-        
-        # Temoral parameters
+
+        # Damping parameters
+        Lfd = 7.5 * Lm
+        Lfd1 = 0.5 * Lm
+        Ld = Lf - Lfd
+        Ld1 = Lf - 0.5 * Lm
+
+        # Temporal parameters
         ρ∞ = 0.5
         t0 = 0.0
-        tF = 0.2
+        tF = 100.0
         dt = 0.1
 
-        # Damping parameters 
-        Lfd = 7.5*(2*H)
-        Lfd1 = 0.5*(2*H)
-        Ld = Lf - Lfd
-        Ld1 = Lf - 0.5*(2*H)
+        # Physical parameters
+        ρf = 1000.0 # Fluid density
+        ρs = (ρf * Lm * 0.045) / hs # Solid density
+        g = 9.81 # Acceleration due to gravity
+        T = 0.025 * ρf * g * Lm^2 # Solid stiffness parameter
 
-        # Wave Parameters
-        kλ = 1.0
-        η₀ = 0.01
+        # Wave parameters
+        η₀ = 0.1
+        ω = 2 # Wave frequency
+        kλ = find_zero(kλ -> g * kλ * tanh(kλ * H) - ω^2, (0.01, 10.0))
+        ϕ = 0.0
 
-        case = WSI2D_params(
+        # Post-processing parameters
+        vtkoutput = true
+
+        params = WSI2D_params(
+            # MPI parameters and case name
             nprocs = MPI.Comm_size(MPI.COMM_WORLD),
             rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
-            case = case,
+            case = case_name,
+
+            # Geometric parameters
             H = H,
-            meshpath = meshpath,
+            Lm = Lm,
             Lf = Lf,
-            ρ∞ = ρ∞,
-            t0 = t0,
-            tF = tF,
-            dt = dt,
+            hs = hs,
+            meshpath = meshpath,
+
+            # Damping parameters
             Lfd = Lfd,
             Lfd1 = Lfd1,
             Ld = Ld,
             Ld1 = Ld1,
+
+            # Temporal parameters
+            ρ∞ = ρ∞,
+            t0 = t0,
+            tF = tF,
+            dt = dt,
+
+            # Physical parameters
+            ρf = ρf,
+            ρs = ρs,
+            g = g,
+            T = T,
+
+            # Wave parameters
             kλ = kλ,
             η₀ = η₀,
-            vtkoutput = true,
+            ω = ω,
+            ϕ = ϕ,
+
+            # Post-processing parameters
+            vtkoutput = vtkoutput,
         )
 
         path = mkpath("$(datadir("wsi_2d", "case_1"))")
-        filename = savename(case; ignores = [:meshpath])
+        filename = savename(params; ignores = [:meshpath])
 
-        produce_or_load(run_src, case, path; filename = filename)
+        produce_or_load(run_src, params, path; filename = filename)
     end
 end
 

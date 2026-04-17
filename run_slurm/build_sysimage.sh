@@ -37,8 +37,8 @@ julia --project=. -e '
 echo "Tracing serial warmup into ${SERIAL_TRACE}"
 julia --project=. --trace-compile="${SERIAL_TRACE}" compile/trace_serial_warmup.jl
 
-echo "Tracing MPI warmups with 2 ranks"
-srun --mpi=pmix --ntasks=2 bash -lc '
+echo "Tracing MPI warmups with 1 ranks"
+srun --mpi=pmix --ntasks=1 bash -lc '
     set -euo pipefail
     rank="${SLURM_PROCID}"
     trace_file="compile/traces/mpi_rank_${rank}.jl"

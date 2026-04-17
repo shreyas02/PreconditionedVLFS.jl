@@ -2,7 +2,7 @@ module ToyRichardsonSetup
 
 using PreconditionedVLFS
 using DrWatson
-using Plots
+using Plots, DataFrames
 
 function warmup()
 

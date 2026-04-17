@@ -1,5 +1,4 @@
 using DrWatson
-@quickactivate "PreconditionedVLFS"
 using PreconditionedVLFS
 
 include(scriptsdir("wsi_2d_setup.jl"))

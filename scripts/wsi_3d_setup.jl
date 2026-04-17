@@ -2,8 +2,11 @@ module WSI3DSetup
 
 using PreconditionedVLFS
 using PartitionedArrays, MPI
-using DrWatson, DataFrames
-using Plots, TimerOutputs
+using DrWatson, TimerOutputs
+using Plots, DataFrames, Roots
+
+include("mesh_wsi_3d_warmup.jl")
+using .WSI3DMesh_warmup
 
 include("mesh_wsi_3d_1.jl")
 using .WSI3DMesh1
@@ -17,22 +20,83 @@ function warmup()
         # Construction of the required parameters
 
         # Case number
-        case = "warmup"
+        case_name = "warmup"
 
-        H = 0.5
-        meshpath = WSI3DMesh1.create_mesh(ranks, H)
+        # Geometric parameters
+        H = 2.0
+        Lm = 1.0
+        Lf = 2.0
+        Ly = 2.0
+        hs = 0.01
+        meshpath = WSI3DMesh_warmup.create_mesh(ranks)
+
+        # Damping parameters
+        Lfd = 0.0
+        Lfd1 = 0.0
+        Ld = 2.0
+        Ld1 = 2.0   
+
+        # Temporal parameters
+        ρ∞ = 0.5
+        t0 = 0.0
+        tF = 0.1
+        dt = 0.1
+
+        # Physical parameters
+        ρf = 1000.0 # Fluid density
+        ρs = 100.0 # Solid density
+        g = 9.81 # Acceleration due to gravity
+        T = 0.9 * ρf * g # Solid stiffness parameter
+
+        # Wave parameters
+        kλ = 3.0
+        η₀ = 0.01
+        ϕ = 0.0
+        ω = sqrt(g * kλ * tanh(kλ * H)) # Wave frequency
+
+        # Post-processing parameters
+        vtkoutput = false
 
         case = WSI3D_params(
+            # MPI parameters and case name
             nprocs = MPI.Comm_size(MPI.COMM_WORLD),
             rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
-            case = case,
+            case = case_name,
+
+            # Geometric parameters
             H = H,
+            Lm = Lm,
+            Ly = Ly,
+            Lf = Lf,
+            hs = hs,
             meshpath = meshpath,
-            ρ∞ = 0.5,
-            t0 = 0.0,
-            tF = 0.1,
-            dt = 0.1,
-            vtkoutput = false,
+
+            # Damping parameters
+            Lfd = Lfd,
+            Lfd1 = Lfd1,
+            Ld = Ld,
+            Ld1 = Ld1,
+
+            # Temporal parameters
+            ρ∞ = ρ∞,
+            t0 = t0,
+            tF = tF,
+            dt = dt,
+
+            # Physical parameters
+            ρf = ρf, # Fluid density
+            ρs = ρs, # Solid density
+            g = g, # Acceleration due to gravity
+            T = T, # Solid stiffness parameter
+
+            # Wave parameters
+            kλ = kλ,
+            η₀ = η₀,
+            ω = ω,
+            ϕ = ϕ,
+
+            # Post-processing parameters
+            vtkoutput = vtkoutput,
         )
 
         # Loading the case and running the code
@@ -68,47 +132,85 @@ function case_1()
         # Construction of the required parameters
 
         # Case number
-        case = "case_1"
+        case_name = "case_1"
 
         # Geometric parameters
         H = 1.1
-        meshpath = WSI3DMesh1.create_mesh(ranks, H)
+        Lm = 2
         Lf = 9 * pi * H
-        
-        # Temoral parameters
+        Ly = H
+        hs = 0.01
+
+        # Damping parameters
+        Lfd = 7.5 * Lm
+        Lfd1 = 0.5 * Lm
+        Ld = Lf - Lfd
+        Ld1 = Lf - 0.5 * Lm
+
+        # Temporal parameters
         ρ∞ = 0.5
         t0 = 0.0
         tF = 0.2
         dt = 0.1
 
-        # Damping parameters 
-        Lfd = 3*pi
-        Lfd1 = 0.5*π
-        Ld = 7.5*π
-        Ld1 = Lf - 0.5
+        # Physical parameters
+        ρf = 1000.0 # Fluid density
+        ρs = (ρf * Lm * 0.045) / hs # Solid density
+        g = 9.81 # Acceleration due to gravity
+        T = 0.025 * ρf * g * Lm^2 # Solid stiffness parameter
 
-        # Wave Parameters
-        kλ = 1.0
-        η₀ = 0.01
+        # Wave parameters
+        η₀ = 0.1
+        ω = 2 # Wave frequency
+        kλ = find_zero(kλ -> g * kλ * tanh(kλ * H) - ω^2, (0.01, 10.0))
+        ϕ = 0.0
+
+        # Mesh generations
+        meshpath = WSI3DMesh1.create_mesh(ranks, H)
+
+        # Post-processing parameters
+        vtkoutput = true
 
         case = WSI3D_params(
+            # MPI parameters and case name
             nprocs = MPI.Comm_size(MPI.COMM_WORLD),
             rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
-            case = case,
+            case = case_name,
+
+            # Geometric parameters
             H = H,
-            meshpath = meshpath,
+            Lm = Lm,
+            Ly = Ly,
             Lf = Lf,
-            ρ∞ = ρ∞,
-            t0 = t0,
-            tF = tF,
-            dt = dt,
+            hs = hs,
+            meshpath = meshpath,
+
+            # Damping parameters
             Lfd = Lfd,
             Lfd1 = Lfd1,
             Ld = Ld,
             Ld1 = Ld1,
+
+            # Temporal parameters
+            ρ∞ = ρ∞,
+            t0 = t0,
+            tF = tF,
+            dt = dt,
+
+            # Physical parameters
+            ρf = ρf, # Fluid density
+            ρs = ρs, # Solid density
+            g = g, # Acceleration due to gravity
+            T = T, # Solid stiffness parameter
+
+            # Wave parameters
             kλ = kλ,
             η₀ = η₀,
-            vtkoutput = true,
+            ω = ω,
+            ϕ = ϕ,
+
+            # Post-processing parameters
+            vtkoutput = vtkoutput,
         )
 
         path = mkpath("$(datadir("wsi_3d", "case_1"))")

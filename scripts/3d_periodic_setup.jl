@@ -2,8 +2,8 @@ module Periodic3DSetup
 
 using PreconditionedVLFS
 using PartitionedArrays, MPI
-using DrWatson, DataFrames
-using Plots, TimerOutputs
+using DrWatson, TimerOutputs
+using Plots, DataFrames
 
 function warmup()
     with_mpi() do distribute
@@ -32,6 +32,8 @@ function warmup()
 end
 
 function strong_scaling()
+
+    @eval using Plots, DataFrames
     
     with_mpi() do distribute
         # Generate ranks
