@@ -9,7 +9,6 @@
 .DS_Store
 Manifest.toml
 docs/build/
-src/cppcode/build/
 */env.sh
 slurm_jobs/job*
 
@@ -30,8 +29,6 @@ Manifest.toml
 *.png
 stdout
 stderr
-compile/traces/
-compile/PreconditionedVLFS_precompile_statements.jl
 .vscode
 
 ################################################################################
@@ -306,7 +303,7 @@ pythontex-files-*/
 # xindy
 *.xdy
 
-# xypic precompiled matrices
+# xypic generated matrices
 *.xyc
 
 # endfloat
