@@ -77,29 +77,6 @@ bash run_local/scaling_3d_weak.sh
 
 The WSI and Toy Richardson local scripts run the `all` option by default in their active command. To run one case, edit the command in the corresponding script.
 
-Direct Julia entrypoints:
-
-```bash
-julia --project=. test/toyrichardsontest.jl comparison
-julia --project=. test/toyrichardsontest.jl all
-
-julia --project=. test/wsi2dtest.jl case_1
-julia --project=. test/wsi2dtest.jl length_sweep
-julia --project=. test/wsi2dtest.jl density_sweep
-julia --project=. test/wsi2dtest.jl all
-
-julia --project=. test/wsi3dtest.jl case_1
-julia --project=. test/wsi3dtest.jl all
-
-julia --project=. test/periodic2dtest.jl strong_scaling
-julia --project=. test/periodic2dtest.jl weak_scaling
-julia --project=. test/periodic2dtest.jl all
-
-julia --project=. test/periodic3dtest.jl strong_scaling
-julia --project=. test/periodic3dtest.jl weak_scaling
-julia --project=. test/periodic3dtest.jl all
-```
-
 ```bash
 # For SLURM
 sbatch slurm_jobs/<job-script>.sh
