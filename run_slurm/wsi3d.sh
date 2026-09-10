@@ -12,9 +12,8 @@ source ./run_slurm/env.sh
 
 echo "Running WSI 3D test (8 ranks)"
 
-srun --mpi=pmix --ntasks=8 julia --project=. \
-    -J compile/PreconditionedVLFS.so \
-    test/wsi3dtest.jl \
-    > "${ROOT_DIR}/slurm_jobs/wsi_3d.log" 2>&1
+srun --mpi=pmix --ntasks=4 julia --project=. \
+    test/wsi3dtest.jl all \
+    > "${ROOT_DIR}/slurm_jobs/wsi_3d_all.log" 2>&1
 
 echo "WSI 3D test completed."

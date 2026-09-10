@@ -3,6 +3,7 @@
 
 source ./run_local/env.sh
 
-mpiexecjl -n 8 julia --project=. -J compile/PreconditionedVLFS.so test/wsi3dtest.jl &> output_wsi_3d.txt
+# mpiexecjl -n 8 julia --project=. test/wsi3dtest.jl case_1 &> output_wsi_3d_case_1.txt
+mpiexecjl -n 8 julia --project=. test/wsi3dtest.jl all &> output_wsi_3d_all.txt
 
 echo "WSI 3D test completed."

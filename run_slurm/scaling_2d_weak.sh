@@ -8,11 +8,10 @@ cd "${ROOT_DIR}"
 
 source ./run_slurm/env.sh
 
-for n in 8 6 4 2; do
+for n in 64; do
     echo "Running ${n}-rank case"
     srun --mpi=pmix --ntasks="${n}" julia --project=. \
-        -J compile/PreconditionedVLFS.so \
-        test/periodic2d_test_weak.jl \
+        test/periodic2dtest.jl weak_scaling \
         > "${ROOT_DIR}/slurm_jobs/periodic2d_test_weak_${n}cores.log" 2>&1
 done
 

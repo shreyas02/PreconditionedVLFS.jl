@@ -8,7 +8,7 @@ cd "${ROOT_DIR}"
 
 source ./run_slurm/env.sh
 
-srun --ntasks=1 julia --project=. -J compile/PreconditionedVLFS.so test/toyrichardsontest.jl \
-    > "${ROOT_DIR}/slurm_jobs/toy_richardson.log" 2>&1
+srun --ntasks=1 julia --project=. test/toyrichardsontest.jl all \
+    > "${ROOT_DIR}/slurm_jobs/toy_richardson_all.log" 2>&1
 
 echo "Toy Richardson test completed."

@@ -1,14 +1,25 @@
 using Gridap, GridapGmsh
-using Gridap.ReferenceFEs, Gridap.Algebra, Gridap.Geometry, Gridap.FESpaces, Gridap.MultiField
-using Gridap.CellData, Gridap.MultiField, Gridap.Algebra
+using Gridap.Algebra
+using Gridap.CellData
+using Gridap.FESpaces
+using Gridap.Geometry
+using Gridap.MultiField
+using Gridap.ReferenceFEs
 
 using GridapSolvers
 using GridapSolvers.LinearSolvers, GridapSolvers.MultilevelTools
-using GridapSolvers.BlockSolvers: LinearSystemBlock, BiformBlock, BlockTriangularSolver
+using GridapSolvers.BlockSolvers:
+  BiformBlock, BlockTriangularSolver, LinearSystemBlock
 
-using LinearAlgebra, SparseArrays, FillArrays, BlockArrays, WriteVTK
+using BlockArrays
+using FillArrays
+using LinearAlgebra
+using SparseArrays
+using SparseMatricesCSR
+using WriteVTK
 
 using GridapDistributed, PartitionedArrays
+using GridapTrilinos
 using Logging
 
 using Parameters, TimerOutputs

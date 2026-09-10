@@ -7,33 +7,33 @@ using PartitionedArrays
 
 function create_mesh(ranks, height::Float64)
 
-    path = mkpath(datadir("wsi_3d", "model"))
+  path = mkpath(datadir("wsi_3d", "model"))
 
-    mesh_file = "$path/mesh_wsi_3d_1.msh"
+  mesh_file = "$path/mesh_wsi_3d_1.msh"
 
-    map_main(ranks) do rank
+  map_main(ranks) do rank
 
     gmsh.initialize()
     gmsh.option.setNumber("General.Terminal", 1)
     gmsh.model.add("3D_domain")
 
     # Outter box dimensions
-    length_x = 9 * pi * height
-    length_y = pi * height
+    length_x = 9 * pi
+    length_y = pi
     length_z = height
 
     # Membrane dimensions
-    length_mem = 2 * pi * height
-    width = 0.5 * pi * height
+    length_mem = pi
+    width = 0.5 * pi
 
     # Mesh partitioning per unit length
-    float_x_mesh = 3
-    float_y_mesh = 3
-    top_x_mesh = 3
-    top_y_mesh = 3
+    float_x_mesh = 5
+    float_y_mesh = 5
+    top_x_mesh = 5
+    top_y_mesh = 5
     bottom_x_mesh = 3
     bottom_y_mesh = 3
-    sides_mesh = 3
+    sides_mesh = 5
 
     # Membrane origin coordinates
     membrane_begin = length_x / 2 - length_mem / 2
@@ -43,28 +43,28 @@ function create_mesh(ranks, height::Float64)
 
     # Points: gmsh.model.geo.addPoint(x, y, z, meshSize)
     p1 = gmsh.model.geo.addPoint(membrane_begin, membrane_left, length_z, 1.0)
-    p2 = gmsh.model.geo.addPoint(membrane_end,   membrane_left, length_z, 1.0)
-    p3 = gmsh.model.geo.addPoint(membrane_end,   membrane_right, length_z, 1.0)
+    p2 = gmsh.model.geo.addPoint(membrane_end, membrane_left, length_z, 1.0)
+    p3 = gmsh.model.geo.addPoint(membrane_end, membrane_right, length_z, 1.0)
     p4 = gmsh.model.geo.addPoint(membrane_begin, membrane_right, length_z, 1.0)
-    p5  = gmsh.model.geo.addPoint(0.0,      0.0,      length_z, 1.0)
-    p6  = gmsh.model.geo.addPoint(length_x, 0.0,      length_z, 1.0)
-    p7  = gmsh.model.geo.addPoint(length_x, length_y, length_z, 1.0)
-    p8  = gmsh.model.geo.addPoint(0.0,      length_y, length_z, 1.0)
-    p9  = gmsh.model.geo.addPoint(0.0,      length_y, 0.0,      1.0)
-    p10 = gmsh.model.geo.addPoint(0.0,      0.0,      0.0,      1.0)
-    p11 = gmsh.model.geo.addPoint(length_x, 0.0,      0.0,      1.0)
-    p12 = gmsh.model.geo.addPoint(length_x, length_y, 0.0,      1.0)
+    p5 = gmsh.model.geo.addPoint(0.0, 0.0, length_z, 1.0)
+    p6 = gmsh.model.geo.addPoint(length_x, 0.0, length_z, 1.0)
+    p7 = gmsh.model.geo.addPoint(length_x, length_y, length_z, 1.0)
+    p8 = gmsh.model.geo.addPoint(0.0, length_y, length_z, 1.0)
+    p9 = gmsh.model.geo.addPoint(0.0, length_y, 0.0, 1.0)
+    p10 = gmsh.model.geo.addPoint(0.0, 0.0, 0.0, 1.0)
+    p11 = gmsh.model.geo.addPoint(length_x, 0.0, 0.0, 1.0)
+    p12 = gmsh.model.geo.addPoint(length_x, length_y, 0.0, 1.0)
 
     # Lines: gmsh.model.geo.addLine(start_point_tag, end_point_tag)
     l1 = gmsh.model.geo.addLine(p1, p2)
     l2 = gmsh.model.geo.addLine(p2, p3)
     l3 = gmsh.model.geo.addLine(p3, p4)
     l4 = gmsh.model.geo.addLine(p4, p1)
-    l5  = gmsh.model.geo.addLine(p5, p6)
-    l6  = gmsh.model.geo.addLine(p6, p7)
-    l7  = gmsh.model.geo.addLine(p7, p8)
-    l8  = gmsh.model.geo.addLine(p8, p5)
-    l9  = gmsh.model.geo.addLine(p5, p10)
+    l5 = gmsh.model.geo.addLine(p5, p6)
+    l6 = gmsh.model.geo.addLine(p6, p7)
+    l7 = gmsh.model.geo.addLine(p7, p8)
+    l8 = gmsh.model.geo.addLine(p8, p5)
+    l9 = gmsh.model.geo.addLine(p5, p10)
     l10 = gmsh.model.geo.addLine(p10, p11)
     l11 = gmsh.model.geo.addLine(p11, p12)
     l12 = gmsh.model.geo.addLine(p12, p9)
@@ -96,7 +96,9 @@ function create_mesh(ranks, height::Float64)
     surf7 = gmsh.model.geo.addPlaneSurface([loop7])
 
     # Volume (Surface Loops & volumes)
-    shell1 = gmsh.model.geo.addSurfaceLoop([surf7, surf3, surf6, surf2, surf4, surf5, surf1])
+    shell1 = gmsh.model.geo.addSurfaceLoop(
+      [surf7, surf3, surf6, surf2, surf4, surf5, surf1],
+    )
     vol1 = gmsh.model.geo.addVolume([shell1])
 
     # ---------------------------------------------------------
@@ -104,25 +106,105 @@ function create_mesh(ranks, height::Float64)
     # ---------------------------------------------------------
 
     # Vertical partitions (Passing positive l5 since progression is 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l1, max(2, Int(round(float_x_mesh * length_mem))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l3, max(2, Int(round(float_x_mesh * length_mem))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l2, max(2, Int(round(float_y_mesh * width))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l4, max(2, Int(round(float_y_mesh * width))), "Progression", 1.0)
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l1,
+      max(2, Int(round(float_x_mesh * length_mem))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l3,
+      max(2, Int(round(float_x_mesh * length_mem))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l2,
+      max(2, Int(round(float_y_mesh * width))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l4,
+      max(2, Int(round(float_y_mesh * width))),
+      "Progression",
+      1.0,
+    )
 
-    gmsh.model.geo.mesh.setTransfiniteCurve(l5, max(2, Int(round(length_x * top_x_mesh))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l7, max(2, Int(round(length_x * top_x_mesh))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l8, max(2, Int(round(length_y * top_y_mesh))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l6, max(2, Int(round(length_y * top_y_mesh))), "Progression", 1.0)
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l5,
+      max(2, Int(round(length_x * top_x_mesh))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l7,
+      max(2, Int(round(length_x * top_x_mesh))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l8,
+      max(2, Int(round(length_y * top_y_mesh))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l6,
+      max(2, Int(round(length_y * top_y_mesh))),
+      "Progression",
+      1.0,
+    )
 
-    gmsh.model.geo.mesh.setTransfiniteCurve(l9,  max(2, Int(round(length_z * sides_mesh))), "Progression", 0.9)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l14, max(2, Int(round(length_z * sides_mesh))), "Progression", 0.9)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l15, max(2, Int(round(length_z * sides_mesh))), "Progression", 0.9)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l16, max(2, Int(round(length_z * sides_mesh))), "Progression", 0.9)
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l9,
+      max(2, Int(round(length_z * sides_mesh))),
+      "Progression",
+      0.9,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l14,
+      max(2, Int(round(length_z * sides_mesh))),
+      "Progression",
+      0.9,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l15,
+      max(2, Int(round(length_z * sides_mesh))),
+      "Progression",
+      0.9,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l16,
+      max(2, Int(round(length_z * sides_mesh))),
+      "Progression",
+      0.9,
+    )
 
-    gmsh.model.geo.mesh.setTransfiniteCurve(l10, max(2, Int(round(length_x * bottom_x_mesh))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l12, max(2, Int(round(length_x * bottom_x_mesh))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l13, max(2, Int(round(length_y * bottom_y_mesh))), "Progression", 1.0)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l11, max(2, Int(round(length_y * bottom_y_mesh))), "Progression", 1.0)
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l10,
+      max(2, Int(round(length_x * bottom_x_mesh))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l12,
+      max(2, Int(round(length_x * bottom_x_mesh))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l13,
+      max(2, Int(round(length_y * bottom_y_mesh))),
+      "Progression",
+      1.0,
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(
+      l11,
+      max(2, Int(round(length_y * bottom_y_mesh))),
+      "Progression",
+      1.0,
+    )
 
     # Transfinite surface definitions
 
@@ -193,8 +275,9 @@ function create_mesh(ranks, height::Float64)
     # Finalize
     gmsh.write(mesh_file)
     gmsh.finalize()
-    end
-    sum(ranks) # Adding this line to create a MPI Barrier using PartitinedArrays
-    return mesh_file
+  end
+  sum(ranks) # Adding this line to create a MPI Barrier using PartitinedArrays
+  return mesh_file
 end
+
 end
