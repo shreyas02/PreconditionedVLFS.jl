@@ -3,7 +3,6 @@ module WSI3DSetup
 using PreconditionedVLFS
 using PartitionedArrays, MPI
 using DrWatson, TimerOutputs
-using Plots, DataFrames, Roots
 
 include("mesh_wsi_3d_1.jl")
 using .WSI3DMesh1

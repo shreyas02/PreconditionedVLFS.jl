@@ -4,7 +4,6 @@ using PreconditionedVLFS
 using PartitionedArrays, MPI
 using DrWatson
 using TimerOutputs
-using Roots
 
 include("mesh_wsi_2d_1.jl")
 using .WSI2DMesh1
