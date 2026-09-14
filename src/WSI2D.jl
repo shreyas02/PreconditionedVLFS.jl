@@ -345,8 +345,8 @@ function wsi2d(distribute, parts, params::WSI2D_params)
       restart = false,
       m_add = 1,
       maxiter = 1000,
-      atol = 1e-6,
-      rtol = 1.0e-5,
+      atol = 1e-8,
+      rtol = 1.0e-7,
       verbose = i_am_main(ranks),
     )
     sys_solver = DiscreteDampingSolver(solver, alpha, x_base)
