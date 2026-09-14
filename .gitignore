@@ -26,6 +26,7 @@ slurm_jobs/job*
 output*.txt
 LocalPreferences.toml
 Manifest.toml
+.julia_depot/
 *.png
 stdout
 stderr
