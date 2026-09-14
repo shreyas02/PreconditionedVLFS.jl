@@ -362,7 +362,7 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
   outer_residuals = solver.log.residuals
   outer_residuals = outer_residuals[outer_iter_array .+ 1]
 
-  return (
+  solver_stats = (
     fluid = (
       num_iters = fluid_block.log.num_iters,
       residual = fluid_block.log.residual,
@@ -379,6 +379,8 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
       timer = to,
     ),
   )
+  GC.gc(true)
+  return solver_stats
 end
 # Ending FSI Problem Definition
 ###############################

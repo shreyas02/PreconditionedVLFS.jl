@@ -276,5 +276,7 @@ function toyrichardson(ω::Float64, params::ToyRichardsonParams)
   outer_residuals = solver.log.residuals
   outer_residuals = outer_residuals[outer_iter_array .+ 1]
 
-  return outer_num_iter, outer_iter_array, outer_residuals
+  solver_stats = (outer_num_iter, outer_iter_array, outer_residuals)
+  GC.gc(true)
+  return solver_stats
 end
