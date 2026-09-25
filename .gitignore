@@ -9,8 +9,8 @@
 .DS_Store
 Manifest.toml
 docs/build/
-src/cppcode/build/
-run/env.sh
+*/env.sh
+slurm_jobs/job*
 
 *.vtu
 *.pvtu
@@ -26,11 +26,10 @@ run/env.sh
 output*.txt
 LocalPreferences.toml
 Manifest.toml
+.julia_depot/
 *.png
 stdout
 stderr
-compile/traces/
-compile/PreconditionedVLFS_precompile_statements.jl
 .vscode
 
 ################################################################################
@@ -305,7 +304,7 @@ pythontex-files-*/
 # xindy
 *.xdy
 
-# xypic precompiled matrices
+# xypic generated matrices
 *.xyc
 
 # endfloat

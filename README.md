@@ -1,58 +1,49 @@
 # PreconditionedVLFS.jl
 
-`PreconditionedVLFS.jl` is a local Julia project for VLFS preconditioning experiments. This repository is used as a project workspace rather than a registered Julia package, with shell scripts in `run/` driving setup, sysimage generation, and the main cases.
+`PreconditionedVLFS.jl` is a local Julia project for VLFS preconditioning experiments. This repository is used as a project workspace rather than a registered Julia package, with shell scripts in `run_local/` and `run_slurm/` driving setup and the main cases.
 
 ## Prerequisites
 
 - Julia `1.10.x`
-- System OpenMPI available to Julia and Trilinos
-- A Trilinos installation path exported through `run/env.sh`
+- System MPI available to Julia and Trilinos
+- A Trilinos installation path exported through `run_local/env.sh` or `run_slurm/env.sh`
+
+Trilinos must be built with the same MPI build used by the system binary configured through `MPIPreferences.jl`.
 
 ## Setup
+
+### 1. Create the env.sh file
 
 From the project root:
 
 ```bash
-cp run/env.example.sh run/env.sh
+# For Local
+cp run_local/env.example.sh run_local/env.sh
+# For SLURM
+cp run_slurm/env.example.sh run_slurm/env.sh
 ```
 
-Edit `run/env.sh` and set `TRILINOS_ROOT` for your machine. Add any required module loads or environment exports there as well.
+Edit `run_local/env.sh` or `run_slurm/env.sh` and set `TRILINOS_ROOT` for your machine. Add any required module loads or environment exports there as well.
+
+### 2. Prepare the julia env
 
 Then prepare the Julia environment and MPI preferences:
 
 ```bash
-bash run/warmup.sh
+# For Local
+bash run_local/warmup.sh
+# For SLURM
+bash run_slurm/warmup.sh
 ```
 
-`run/warmup.sh` installs the project dependencies, selects the system MPI binary through `MPIPreferences`, and runs standard Julia precompilation.
+`run_local/warmup.sh` and `run_slurm/warmup.sh` install the project dependencies and select the system MPI binary through `MPIPreferences`.
 
-## Build the cpp source files related to the Gridap Trilinos interface
+### 3. Build GridapTrilinos
 
-From the project root:
+`GridapTrilinos.jl` owns the Trilinos C++ wrapper. After setting `TRILINOS_ROOT`, build it through Julia's package manager:
 
 ```bash
-bash run/buildcpp.sh
-```
-
-## Build Sysimage
-
-To build the MPI-aware sysimage from the warmup traces, run:
-
-```bash
-bash run/build_sysimage.sh
-```
-
-This script:
-
-- verifies that Julia is configured to use system OpenMPI
-- traces the serial and MPI warmup cases
-- merges the generated precompile statements
-- builds a sysimage for `PreconditionedVLFS`
-
-The output sysimage is written to:
-
-```text
-compile/PreconditionedVLFS.so
+julia --project=. -e 'using Pkg; Pkg.build("GridapTrilinos")'
 ```
 
 ## Trilinos
@@ -65,20 +56,30 @@ Expected Trilinos setup:
 
 For the parallel cases, solver settings can be adjusted through the XML files in `data/`.
 
+## Write your own jobs script for the SLURM workflow
+
+Use `example_job.sh` as a template and write your job script in the `slurm_jobs` dir. 
+
 ## Run Cases
 
 Run the provided shell entrypoints from the project root:
 
 ```bash
-bash run/toyrichardson.sh
-bash run/wsi2d.sh
-bash run/wsi3d.sh
-bash run/scaling_2d_strong.sh
-bash run/scaling_2d_weak.sh
-bash run/scaling_3d_strong.sh
-bash run/scaling_3d_weak.sh
+# For Local
+bash run_local/toyrichardson.sh
+bash run_local/wsi2d.sh
+bash run_local/wsi3d.sh
+bash run_local/scaling_2d_strong.sh
+bash run_local/scaling_2d_weak.sh
+bash run_local/scaling_3d_strong.sh
+bash run_local/scaling_3d_weak.sh
+```
+
+The WSI and Toy Richardson local scripts run the `all` option by default in their active command. To run one case, edit the command in the corresponding script.
+
+```bash
+# For SLURM
+sbatch slurm_jobs/<job-script>.sh
 ```
 
 Adjust the number of MPI processes by editing the corresponding shell script before running it.
-
-The run scripts use the sysimage at `compile/PreconditionedVLFS.so`.
