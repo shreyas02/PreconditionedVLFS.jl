@@ -161,8 +161,14 @@ end
 
 function get_triangulations(model, mem_tag)
   labels = get_face_labeling(model)
-  cells_from_nodes_from_solid_faces = Vector{Int32}[]
-  map(local_views(model), local_views(labels)) do model, labels
+  full_trian = Triangulation(with_ghost, model)
+  cell_gids = get_cell_gids(model)
+  ghost_trians_s = map(
+    local_views(model),
+    local_views(labels),
+    local_views(full_trian),
+    partition(cell_gids),
+  ) do model, labels, full_trian, gids
     # Get the grid topology
     topo = Gridap.Geometry.get_grid_topology(model)
     # Get the dimension of the model
@@ -176,20 +182,30 @@ function get_triangulations(model, mem_tag)
     cells_from_nodes_from_solid_faces = unique(
       vcat(get_faces(topo, 0, D)[nodes_from_solid_faces]...),
     )
+    local_to_owned = local_to_own(gids)
+    s_cells = sort!(
+      filter(
+        cell -> !iszero(local_to_owned[cell]),
+        Vector{Int32}(cells_from_nodes_from_solid_faces),
+      ),
+    )
+    view(full_trian, s_cells)
   end
   # Creating the triangulations
-  ΩΓ_s = GridapDistributed.Geometry.Triangulation(
-    model,
-    Vector{Int32}(cells_from_nodes_from_solid_faces),
-  )
+  ΩΓ_s = GridapDistributed.DistributedTriangulation(ghost_trians_s, model)
   return ΩΓ_s
 end
 
 function get_triangulations(model, fs_tag, mem_tag)
   labels = get_face_labeling(model)
-  cells_from_nodes_from_solid_faces_wo_fs = Vector{Int32}[]
-  cells_from_nodes_from_fs_faces_wo_solid = Vector{Int32}[]
-  map(local_views(model), local_views(labels)) do model, labels
+  full_trian = Triangulation(with_ghost, model)
+  cell_gids = get_cell_gids(model)
+  ghost_trians_fs, ghost_trians_s = map(
+    local_views(model),
+    local_views(labels),
+    local_views(full_trian),
+    partition(cell_gids),
+  ) do model, labels, full_trian, gids
     # Get the grid topology
     topo = Gridap.Geometry.get_grid_topology(model)
     # Get the dimension of the model
@@ -221,36 +237,101 @@ function get_triangulations(model, fs_tag, mem_tag)
       cells_from_nodes_from_solid_faces,
       cells_from_nodes_from_fs_faces_wo_solid,
     )
-  end
+    local_to_owned = local_to_own(gids)
+    fs_cells = sort!(
+      filter(
+        cell -> !iszero(local_to_owned[cell]),
+        Vector{Int32}(cells_from_nodes_from_fs_faces_wo_solid),
+      ),
+    )
+    s_cells = sort!(
+      filter(
+        cell -> !iszero(local_to_owned[cell]),
+        Vector{Int32}(cells_from_nodes_from_solid_faces_wo_fs),
+      ),
+    )
+    view(full_trian, fs_cells), view(full_trian, s_cells)
+  end |> tuple_of_arrays
   # Creating the triangulations
-  ΩΓ_fs = GridapDistributed.Geometry.Triangulation(
-    model,
-    Vector{Int32}(cells_from_nodes_from_fs_faces_wo_solid),
-  )
-  ΩΓ_s = GridapDistributed.Geometry.Triangulation(
-    model,
-    Vector{Int32}(cells_from_nodes_from_solid_faces_wo_fs),
-  )
+  ΩΓ_fs = GridapDistributed.DistributedTriangulation(ghost_trians_fs, model)
+  ΩΓ_s = GridapDistributed.DistributedTriangulation(ghost_trians_s, model)
   return ΩΓ_fs, ΩΓ_s
+end
+
+function _mark_triangulation_cells!(cell_to_side, trian, side)
+  D = num_cell_dims(get_background_model(trian))
+  glue = get_glue(trian, Val(D))
+  for cell in glue.tface_to_mface
+    cell_to_side[cell] = side
+  end
+  return cell_to_side
+end
+
+function _interface_cell_sides(
+  a::GridapDistributed.DistributedTriangulation,
+  b::GridapDistributed.DistributedTriangulation,
+)
+  @assert a.model === b.model
+  cell_gids = get_cell_gids(a.model)
+  cell_to_side = map(
+    local_views(a.model),
+    local_views(a),
+    local_views(b),
+  ) do model, a, b
+    sides = zeros(Int8, num_cells(model))
+    _mark_triangulation_cells!(sides, a, Int8(1))
+    _mark_triangulation_cells!(sides, b, Int8(2))
+    sides
+  end
+  cache = GridapDistributed.fetch_vector_ghost_values_cache(
+    cell_to_side,
+    partition(cell_gids),
+  )
+  GridapDistributed.fetch_vector_ghost_values!(cell_to_side, cache) |> wait
+  return cell_to_side
+end
+
+function _owned_side_triangulation(trian, gids)
+  D = num_cell_dims(get_background_model(trian))
+  glue = get_glue(trian, Val(D))
+  local_to_owned = local_to_own(gids)
+  owned_faces = findall(
+    cell -> !iszero(local_to_owned[cell]),
+    glue.tface_to_mface,
+  )
+  return view(trian, owned_faces)
+end
+
+function _interface_triangulation_side(
+  a::GridapDistributed.DistributedTriangulation,
+  b::GridapDistributed.DistributedTriangulation,
+  side,
+)
+  @assert a.model === b.model
+  cell_gids = get_cell_gids(a.model)
+  cell_to_side = _interface_cell_sides(a, b)
+  trians = map(
+    local_views(a.model),
+    cell_to_side,
+    partition(cell_gids),
+  ) do model, sides, gids
+    cells_a = findall(isequal(Int8(1)), sides)
+    cells_b = findall(isequal(Int8(2)), sides)
+    trian = InterfaceTriangulation(model, cells_a, cells_b)
+    _owned_side_triangulation(getfield(trian, side), gids)
+  end
+  return GridapDistributed.DistributedTriangulation(trians, a.model)
 end
 
 function select_triangulation(
   a::GridapDistributed.DistributedTriangulation,
   b::GridapDistributed.DistributedTriangulation,
 )
-  @assert a.model === b.model
-  trians = map(a.trians, b.trians) do a, b
-    InterfaceTriangulation(a, b).plus
-  end
-  return GridapDistributed.DistributedTriangulation(trians, a.model)
+  return _interface_triangulation_side(a, b, :plus)
 end
 
 function get_interface_triangulation_side(a, b, side)
-  @assert a.model === b.model
-  trians = map(a.trians, b.trians) do a, b
-    getfield(InterfaceTriangulation(a, b), side)
-  end
-  return GridapDistributed.DistributedTriangulation(trians, a.model)
+  return _interface_triangulation_side(a, b, side)
 end
 
 # Macro to conditionally execute code for vtk output
