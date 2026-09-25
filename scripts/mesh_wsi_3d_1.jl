@@ -5,7 +5,7 @@ using DrWatson
 using GridapGmsh: gmsh
 using PartitionedArrays
 
-function create_mesh(ranks, height::Float64)
+function create_mesh(ranks, Lref::Real)
 
   path = mkpath(datadir("wsi_3d", "model"))
 
@@ -18,22 +18,22 @@ function create_mesh(ranks, height::Float64)
     gmsh.model.add("3D_domain")
 
     # Outter box dimensions
-    length_x = 9 * pi
-    length_y = pi
-    length_z = height
+    length_x = 9 * pi / Lref
+    length_y = pi / Lref
+    length_z = 1.1 / Lref
 
     # Membrane dimensions
-    length_mem = pi
-    width = 0.5 * pi
+    length_mem = pi / Lref
+    width = 0.5 * pi / Lref
 
     # Mesh partitioning per unit length
-    float_x_mesh = 5
-    float_y_mesh = 5
-    top_x_mesh = 5
-    top_y_mesh = 5
-    bottom_x_mesh = 3
-    bottom_y_mesh = 3
-    sides_mesh = 5
+    float_x_mesh = 5 * Lref
+    float_y_mesh = 5 * Lref
+    top_x_mesh = 5 * Lref
+    top_y_mesh = 5 * Lref
+    bottom_x_mesh = 3 * Lref
+    bottom_y_mesh = 3 * Lref
+    sides_mesh = 5 * Lref
 
     # Membrane origin coordinates
     membrane_begin = length_x / 2 - length_mem / 2

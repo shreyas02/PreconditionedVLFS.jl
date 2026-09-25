@@ -40,39 +40,43 @@ function case_1()
     # Case number
     case_name = "case_1"
 
+    # Non dimensionalization parameters
+    Lref = pi # Physical Membrane length
+    g = 9.81 # Acceleration due to gravity
+    Uref = sqrt(g * Lref) # Reference velocity
+    Tref = Lref / Uref # Reference time
+
     # Geometric parameters
-    H = 1.1
-    Lm = pi
-    Lf = 9 * pi
-    Ly = pi
-    hs = 0.01
+    H = 1.1/Lref
+    Lm = 1
+    Lf = 9 * pi/Lref
+    Ly = pi/Lref
+    hs = 0.01/Lref
 
     # Damping parameters
-    Lfd = 3 * pi
-    Lfd1 = 0.5 * pi
-    Ld = 7.5 * pi
-    Ld1 = Lf - 0.5
+    Lfd = 3 * pi/Lref
+    Lfd1 = 0.5 * pi/Lref
+    Ld = 7.5 * pi/Lref
+    Ld1 = Lf - 0.5/Lref
 
     # Temporal parameters
     ρ∞ = 0.5
-    t0 = 0.0
-    tF = 20.0
-    dt = 0.1
+    t0 = 0.0/Tref
+    tF = 20.0/Tref
+    dt = 0.1/Tref
 
-    # Physical parameters
-    ρf = 1000.0 # Fluid density
-    ρs = 100 # Solid density
-    g = 9.81 # Acceleration due to gravity
-    T = 0.9 * ρf * g # Solid stiffness parameter
+    # Physical parameters.
+    M = 0.045 # Non dimensionalized reduced mass parameter
+    τ = 0.025 # Non dimensional pretension parameter
 
     # Wave parameters
-    kλ = 3.0 # Wave number
-    ω = sqrt(g * kλ * tanh(kλ * H)) # Wave frequency in radians
-    η₀ = 0.01 # surface elevation
+    kλ_dim = 3.0;  kλ = kλ_dim * Lref # Wave number
+    ω_dim = sqrt(g * kλ_dim * tanh(kλ_dim * H * Lref)); ω = ω_dim * Tref # Wave frequency in radians
+    η₀ = 0.01/Lref # surface elevation
     ϕ = 0 # wave phase difference
 
     # Mesh generations
-    meshpath = WSI3DMesh1.create_mesh(ranks, H)
+    meshpath = WSI3DMesh1.create_mesh(ranks, Lref)
 
     # Post-processing parameters
     vtkoutput = true
@@ -82,6 +86,14 @@ function case_1()
       nprocs = MPI.Comm_size(MPI.COMM_WORLD),
       rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
       case = case_name,
+
+      # Reference dimensional state
+      Lref = Lref,
+      Tref = Tref,
+
+      # Physical parameters
+      M = M,
+      τ = τ,
 
       # Geometric parameters
       H = H,
@@ -102,12 +114,6 @@ function case_1()
       t0 = t0,
       tF = tF,
       dt = dt,
-
-      # Physical parameters
-      ρf = ρf, # Fluid density
-      ρs = ρs, # Solid density
-      g = g, # Acceleration due to gravity
-      T = T, # Solid stiffness parameter
 
       # Wave parameters
       kλ = kλ,

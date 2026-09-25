@@ -27,8 +27,8 @@ function create_mesh(
     membrane_begin = (domain / 2 + damp) - mem_length / 2
     membrane_end = membrane_begin + mem_length
 
-    meshPartFree = 3 # 100 / mem_length
-    meshPartFloat = 3 # 100 / mem_length
+    meshPartFree = 60 # 100 / mem_length
+    meshPartFloat = 60 # 100 / mem_length
     z_partitions = 16 # 21
 
     # Points: gmsh.model.geo.addPoint(x, y, z, meshSize)

@@ -6,7 +6,15 @@
   # Case name
   case::String = "test"
 
-  # Geometrical Parameters
+  # Reference dimensional state
+  Lref::Float64 = 1.0
+  Tref::Float64 = 1.0
+
+  # Physical Parameters
+  M::Float64
+  τ::Float64
+
+  # Geometrical Parameters (non-dimensionalized)
   H::Float64
   Lm::Float64
   Lf::Float64
@@ -14,42 +22,40 @@
   hs::Float64
   meshpath::String = datadir("wsi_3d", "model", "mesh_wsi_3d_1.msh")
 
-  # Damping Parameters
+  # Damping Parameters (non-dimensionalized)
   Lfd::Float64
   Lfd1::Float64
   Ld::Float64
   Ld1::Float64
 
-  # Temporal parameters
+  # Temporal parameters (non-dimensionalized)
   ρ∞::Float64
   dt::Float64
   t0::Float64
   tF::Float64
 
-  # Physical Parameters
-  ρf::Float64
-  ρs::Float64
-  g::Float64
-  T::Float64
-
-  # Wave Parameters
+  # Wave Parameters (non-dimensionalized)
   kλ::Float64
   η₀::Float64
   ϕ::Float64
   ω::Float64
 
-  # Robin parameter
+  # Robin parameter (non-dimensionalized)
   αf::Float64 = (
-    ρs * hs * (1 - ((2 * ρ∞ - 1) / (1 + ρ∞)))
+    M * (1 - ((2 * ρ∞ - 1) / (1 + ρ∞)))
   ) / (
     dt *
     (1 / 2 - (2 * ρ∞ - 1) / (1 + ρ∞) + ρ∞ / (1 + ρ∞)) *
     (1 - (ρ∞ / (1 + ρ∞)))
-  )
+  ) + 2 * dt / ((1 + ρ∞) * (3 - ρ∞))
   αs::Float64 = 0.0
 
   # Postprocessing Parameters
   vtkoutput::Bool = false
+end
+
+function ramp(time, Tref; t_ramp = 2.0)
+  return clamp(time / (t_ramp / Tref), 0.0, 1.0)
 end
 
 #################################
@@ -88,7 +94,6 @@ function wsi3d(distribute, parts, params::WSI3D_params)
       "!FloatingSolid",
       ["FloatingSolid"],
     )
-
     # Define reference FE (Q2/P1(disc) pair)
     fe_order = 2
     reffeᵤ = ReferenceFE(lagrangian, VectorValue{3,Float64}, fe_order)
@@ -163,23 +168,13 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     nfs = get_normal_vector(Gfs)
 
     # Defining variable fields
-    function ramp_t(t)
-      if t <= 2.0
-        frac = (t - 0.0) / 2.0
-        ans = 3 * frac^2 - 2 * frac^3
-        return ans
-      else
-        return 1.0
-      end
-    end
-
     function u_field(t)
       ux(t, x) = (
         -ω *
         η₀ *
         (cosh(kλ * x[3]) / sinh(kλ * H)) *
         cos(kλ * x[1] - ω * t + ϕ) *
-        ramp_t(t)
+        ramp(t, Tref)
       )
       uy(t, x) = 0.0
       uz(t, x) = (
@@ -187,7 +182,7 @@ function wsi3d(distribute, parts, params::WSI3D_params)
         η₀ *
         (sinh(kλ * x[3]) / sinh(kλ * H)) *
         sin(kλ * x[1] - ω * t + ϕ) *
-        ramp_t(t)
+        ramp(t, Tref)
       )
       function inner_function(x)
         if x[1] <= Lfd
@@ -204,14 +199,14 @@ function wsi3d(distribute, parts, params::WSI3D_params)
       function inner_function(x)
         if x[1] <= Lfd
           ans = (
-            ρf * g * (H - x[3]) -
-            ((ρf * η₀ * ω * ω) / kλ) *
+            (H - x[3]) -
+            ((η₀ * ω * ω) / kλ) *
             (cosh(kλ * x[3]) / sinh(kλ * H)) *
             cos(kλ * x[1] - ω * t + ϕ) *
-            ramp_t(t)
+            ramp(t, Tref)
           )
         else
-          ans = ρf * g * (H - x[3])
+          ans = (H - x[3])
         end
         return ans
       end
@@ -223,10 +218,10 @@ function wsi3d(distribute, parts, params::WSI3D_params)
         if x[1] <= Lfd
           ans = (
             -1.0 *
-            ((η₀ * ω * ω) / (kλ * g)) *
+            ((η₀ * ω * ω) / (kλ)) *
             (cosh(kλ * x[3]) / sinh(kλ * H)) *
             cos(kλ * x[1] - ω * t + ϕ) *
-            ramp_t(t)
+            ramp(t, Tref)
           )
         else
           ans = 0.0
@@ -292,39 +287,40 @@ function wsi3d(distribute, parts, params::WSI3D_params)
 
     nᵥ = VectorValue(0.0, 0.0, 1.0) # Along the Z direction
     nᵤ = VectorValue(1.0, 0.0, 0.0) # Along the X direction
+    ∇Γ(u) = ∇(u) - (∇(u) ⋅ nᵥ) * nᵥ
 
     # Weak form definition
     jac(t, (dd, dη, du, dp), (s, γ, v, q)) = (
       ∫(-(∇ ⋅ v) * dp)dΩf +
       ∫((∇ ⋅ du) * q)dΩf +
-      ∫(T * ((∇(dd) ⋅ nᵤ) * (∇(v ⋅ nᵥ) ⋅ nᵤ)))dΣs +
-      ∫(ρf * g * dd * (v ⋅ nᵥ))dΣs +
-      ∫(ρf * g * dη * (v ⋅ nᵥ))dΣfs +
+      ∫(τ * (∇Γ(dd) ⋅ ∇Γ(v ⋅ nᵥ)))dΣs +
+      ∫(dd * (v ⋅ nᵥ))dΣs +
+      ∫(dη * (v ⋅ nᵥ))dΣfs +
       ∫(αf * (du ⋅ nᵥ) * (v ⋅ nᵥ))dΣs +
       ∫(αf * (du ⋅ nᵥ) * (v ⋅ nᵥ))dΣfs +
-      ∫(T * (∇(dd) ⋅ nᵤ) * (∇(s) ⋅ nᵤ))dΣs +
-      ∫(ρf * g * dd * s)dΣs -
+      ∫(τ * (∇Γ(dd) ⋅ ∇Γ(s)))dΣs +
+      ∫(dd * s)dΣs -
       ∫(dp * (∇(s) ⋅ nᵥ))dΩs +
       ∫(dp * s * (ns ⋅ nᵥ))dGs +
-      ∫(ρf * g * dη * γ)dΣfs -
+      ∫(dη * γ)dΣfs -
       ∫(dp * (∇(γ) ⋅ nᵥ))dΩfs +
       ∫(dp * γ * (nfs ⋅ nᵥ))dGfs
     )
     jac_t(t, (dtd, dtη, dtu, dtp), (s, γ, v, q)) = (
-      ∫(ρf * (v ⋅ dtu))dΩf -
+      ∫(v ⋅ dtu)dΩf -
       ∫(αf * dtd * (v ⋅ nᵥ))dΣs -
       ∫(αf * dtη * (v ⋅ nᵥ))dΣfs +
-      ∫(ρf * (dtu ⋅ nᵥ) * s)dΩs +
-      ∫(ρf * (dtu ⋅ nᵥ) * γ)dΩfs
+      ∫((dtu ⋅ nᵥ) * s)dΩs +
+      ∫((dtu ⋅ nᵥ) * γ)dΩfs
     )
     jac_tt(t, (dttd, dttη, dttu, dttp), (s, γ, v, q)) = (
-      ∫(ρs * hs * (v ⋅ nᵥ) * dttd)dΣs +
-      ∫(ρs * hs * s * dttd)dΣs
+      ∫(M * (v ⋅ nᵥ) * dttd)dΣs +
+      ∫(M * s * dttd)dΣs
     )
     l(t, (s, γ, v, q)) = (
-      ∫((v ⋅ nᵥ) * -ρf * g + q * 0.0)dΩf +
-      ∫(s * -ρf * g)dΩs +
-      ∫(γ * -ρf * g)dΩfs -
+      ∫((v ⋅ nᵥ) * -1.0 + q * 0.0)dΩf +
+      ∫(s * -1.0)dΩs +
+      ∫(γ * -1.0)dΩfs -
       ∫(pres_field(t) * v ⋅ (-nᵤ))dΣinlet -
       ∫(pres_field(t) * v ⋅ nᵤ)dΣoutlet
     )
@@ -346,12 +342,12 @@ function wsi3d(distribute, parts, params::WSI3D_params)
 
     # System Solver Definition
     sol_param_fluid_dir = datadir("wsi_3d", "solver_parameters_fluid.xml")
-    fluid_block = TrilinosSolve(sol_param_fluid_dir)
+    fluid_block = LUSolver() #TrilinosSolve(sol_param_fluid_dir)
 
     sol_param_solid_dir = datadir("wsi_3d", "solver_parameters_solid.xml")
-    solid_block = TrilinosSolve(sol_param_solid_dir)
+    solid_block = LUSolver() #LUsolver() #TrilinosSolve(sol_param_solid_dir)
 
-    fs_block = TrilinosSolve(sol_param_solid_dir)
+    fs_block = LUSolver() #TrilinosSolve(sol_param_solid_dir)
 
     coeffs = [
       1.0 1.0 1.0
@@ -378,7 +374,7 @@ function wsi3d(distribute, parts, params::WSI3D_params)
       restart = false,
       m_add = 1,
       maxiter = 1000,
-      atol = 1e-6,
+      atol = 1e-8,
       rtol = 1.0e-5,
       verbose = i_am_main(ranks),
     )

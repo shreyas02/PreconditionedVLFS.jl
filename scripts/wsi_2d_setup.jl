@@ -40,14 +40,21 @@ function case_1()
 
     case_name = "case_1"
 
+    # Non dimensionalization parameters
+    Lref = 20.0 # Physical Membrane length
+    g = 9.81 # Acceleration due to gravity
+    Uref = sqrt(g * Lref) # Reference velocity
+    Tref = Lref / Uref # Reference time
+
+    # Non dimensionalized parameters
     # Geometry: membrane centered in the physical wave tank, with damping
     # regions added upstream and downstream.
-    H = 10.0 # Height of the domain
-    domain = 18 * H # Length of the required domain
-    Lm = 2 * H # Membrane length
-    damp = 15 * H # Inlet and outlet damping length
+    Lm = 1.0 # Membrane length
+    H = Lm / 2 # Height of the domain
+    domain = 9 * Lm # Length of the required domain
+    damp = 7.5 * Lm # Inlet and outlet damping length
     Lf = domain + 2 * damp # Total domain length
-    hs = 0.01 # Thickness of the membrane
+    hs = 0.01 / Lref # Thickness of the membrane
     meshpath = WSI2DMesh1.create_mesh(ranks, H, damp, domain, Lm)
 
     # Damping-zone extents used by the inlet/outlet absorbing layers.
@@ -57,22 +64,27 @@ function case_1()
     Ld1 = Lf - 0.5 * Lm
 
     # Time integration parameters.
-    ρ∞ = 1.0
-    t0 = 0.0
-    tF = 120.0
-    dt = 0.05
+    ρ∞ = 0.5
+    t0 = 0.0 / Tref
+    tF = 120.0 / Tref
+    dt = 0.1 / Tref
 
     # Physical parameters.
-    ρf = 1025.0 # Fluid density
-    ρs = (ρf * H * 0.090) / hs # Solid density
-    g = 9.81 # Acceleration due to gravity
-    T = 0.1 * ρf * g * H * H # Solid stiffness parameter
+    M = 0.045 # Non dimensionalized reduced mass parameter
+    τ = 0.025 # Non dimensional pretension parameter
 
-    # Incident-wave parameters. kλ is computed from the finite-depth
-    # dispersion relation for the chosen frequency.
-    η₀ = 0.1
-    ω = 2.4 # Wave frequency
-    kλ = find_zero(kλ -> g * kλ * tanh(kλ * H) - ω^2, (0.01, 10.0))
+    # Incident-wave parameters
+    η₀_dim = 0.1 # Wave amplitude [m]
+    ω_dim = 2.0 # Angular frequency [rad/s]
+    # Nondimensional wave parameters
+    η₀ = η₀_dim / Lref
+    ω = ω_dim * Tref
+    # Wavenumber from dimensional finite-depth dispersion relation
+    kλ_dim = find_zero(
+      k -> g * k * tanh(k * H * Lref) - ω_dim^2,
+      (0.01, 10.0),
+    )
+    kλ = kλ_dim * Lref # Nondimensional wavenumber
     ϕ = 0.0
 
     # Post-processing controls.
@@ -84,10 +96,18 @@ function case_1()
       rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
       case = case_name,
 
+      # Reference dimensional state
+      Lref = Lref,
+      Tref = Tref,
+
+      # Physical parameters
+      M = M,
+      τ = τ,
+
       # Geometric parameters
       H = H,
-      Lm = Lm,
       Lf = Lf,
+      Lm = Lm,
       hs = hs,
       meshpath = meshpath,
 
@@ -97,23 +117,17 @@ function case_1()
       Ld = Ld,
       Ld1 = Ld1,
 
-      # Temporal parameters
-      ρ∞ = ρ∞,
-      t0 = t0,
-      tF = tF,
-      dt = dt,
-
-      # Physical parameters
-      ρf = ρf,
-      ρs = ρs,
-      g = g,
-      T = T,
-
       # Wave parameters
       kλ = kλ,
       η₀ = η₀,
-      ω = ω,
       ϕ = ϕ,
+      ω = ω,
+
+      # Temporal parameters
+      ρ∞ = ρ∞,
+      dt = dt,
+      t0 = t0,
+      tF = tF,
 
       # Post-processing parameters
       vtkoutput = vtkoutput,
@@ -155,53 +169,72 @@ function case_1_density_sweep()
 
     case_name = "case_1_density_sweep"
 
-    # Geometry is fixed across the density sweep so only the density ratio
+    # Non dimensionalization parameters
+    Lref = 20.0 # Physical Membrane length
+    g = 9.81 # Acceleration due to gravity
+    Uref = sqrt(g * Lref) # Reference velocity
+    Tref = Lref / Uref # Reference time
+
+    # Geometry is fixed across the density sweep so only the reduced mass
     # changes.
-    H = 10.0 # Height of the domain
-    domain = 2.1 * H # Length of the required domain
-    Lm = 2 * H # Membrane length
-    damp = 5 * H # Inlet and outlet damping length
+    Lm = 1.0 # Membrane length
+    H = Lm / 2 # Height of the domain
+    domain = 1.1 * Lm # Length of the required domain
+    damp = 5.0 * H # Inlet and outlet damping length
     Lf = domain + 2 * damp # Total domain length
-    hs = 0.01 # Thickness of the membrane
+    hs = 0.01 / Lref # Thickness of the membrane
     meshpath = WSI2DMesh1.create_mesh(ranks, H, damp, domain, Lm)
 
     # Damping-zone extents used by the inlet/outlet absorbing layers.
     Lfd = damp
-    Lfd1 = 0.5 * Lm
+    Lfd1 = 0.5 * H
     Ld = Lf - damp
-    Ld1 = Lf - 0.5 * Lm
+    Ld1 = Lf - 0.5 * H
 
     # Time integration parameters.
-    ρ∞ = 1.0
-    t0 = 0.0
-    tF = 10.0
-    dt = 0.1
+    ρ∞ = 0.5
+    t0 = 0.0 / Tref
+    tF = 12.0 / Tref
+    dt = 0.1 / Tref
 
-    # Physical parameters. The sweep scales the reference membrane density.
-    ρf = 1025.0 # Fluid density
-    ρs_standard = (ρf * H * 0.090) / hs # Solid density
+    # Physical parameters. The sweep scales the reference reduced mass.
+    M_standard = 0.045
     density_ratios = [0.0001, 0.001, 0.01, 0.1]
-    ρs_sweep = density_ratios .* ρs_standard # Sweep over solid density values
-    g = 9.81 # Acceleration due to gravity
-    T = 0.9 * ρf * g # * ρf * g * H * H # Solid stiffness parameter
+    M_sweep = density_ratios .* M_standard # Sweep over reduced mass values
+    τ = 0.025 # Non dimensional pretension parameter
 
-    # Incident-wave parameters. kλ is computed from the finite-depth
-    # dispersion relation for the chosen frequency.
-    η₀ = 0.1
-    ω = 2.0 # Wave frequency
-    kλ = find_zero(kλ -> g * kλ * tanh(kλ * H) - ω^2, (0.01, 10.0))
+    # Incident-wave parameters
+    η₀_dim = 0.1 # Wave amplitude [m]
+    ω_dim = 2.4 # Angular frequency [rad/s]
+    # Nondimensional wave parameters
+    η₀ = η₀_dim / Lref
+    ω = ω_dim * Tref
+    # Wavenumber from dimensional finite-depth dispersion relation
+    kλ_dim = find_zero(
+      k -> g * k * tanh(k * H * Lref) - ω_dim^2,
+      (0.01, 10.0),
+    )
+    kλ = kλ_dim * Lref # Nondimensional wavenumber
     ϕ = 0.0
 
     # Post-processing controls and in-memory sweep summary.
     vtkoutput = true
     density_sweep_data = []
 
-    for (density_ratio, ρs) in zip(density_ratios, ρs_sweep)
+    for (density_ratio, M) in zip(density_ratios, M_sweep)
       params = WSI2D_params(
         # MPI parameters and case name
         nprocs = MPI.Comm_size(MPI.COMM_WORLD),
         rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
         case = case_name,
+
+        # Reference dimensional state
+        Lref = Lref,
+        Tref = Tref,
+
+        # Physical parameters
+        M = M,
+        τ = τ,
 
         # Geometric parameters
         H = H,
@@ -221,12 +254,6 @@ function case_1_density_sweep()
         t0 = t0,
         tF = tF,
         dt = dt,
-
-        # Physical parameters
-        ρf = ρf,
-        ρs = ρs,
-        g = g,
-        T = T,
 
         # Wave parameters
         kλ = kλ,
@@ -251,7 +278,7 @@ function case_1_density_sweep()
       data, _ = produce_or_load(run_src, params, path; filename = filename)
       push!(
         density_sweep_data,
-        (solid_fluid_density_ratio = ρs / ρf, data = data),
+        (reduced_mass = M, data = data),
       )
     end # density sweep
 
@@ -287,30 +314,39 @@ function case_1_length_sweep()
 
     case_name = "case_1_length_sweep"
 
+    # Non dimensionalization parameters
+    Lref = 20.0 # Physical Membrane length for the baseline case
+    g = 9.81 # Acceleration due to gravity
+    Uref = sqrt(g * Lref) # Reference velocity
+    Tref = Lref / Uref # Reference time
+
     # Base geometry. Each membrane length gets its own mesh inside the loop.
-    H = 10.0 # Height of the domain
+    H = 0.5 # Height of the domain
     length_ratios = [1.0, 5.0, 10.0, 100.0]
-    Lm_sweep = length_ratios .* H # Sweep over membrane lengths
-    hs = 0.01 # Thickness of the membrane
+    Lm_sweep = length_ratios # Sweep over membrane lengths
+    hs = 0.01 / Lref # Thickness of the membrane
 
     # Time integration parameters.
-    ρ∞ = 1.0
-    t0 = 0.0
-    tF = 10.0 # 2 seconds to reach steady state, 7 seconds to record data
-    dt = 0.1
+    ρ∞ = 0.5
+    t0 = 0.0 / Tref
+    tF = 12.0 / Tref
+    dt = 0.1 / Tref
 
     # Physical parameters held fixed across the length sweep.
-    ρf = 1025.0 # Fluid density
-    ρs = (ρf * H * 0.090) / hs # Solid density
-    g = 9.81 # Acceleration due to gravity
-    T = 0.9 * ρf * g # * ρf * g * H * H # Solid stiffness parameter
+    M = 0.045 # Non dimensionalized reduced mass parameter
+    τ = 0.025 # Non dimensional pretension parameter
 
-    # Incident-wave parameters. kλ is computed from the finite-depth
+    # Incident-wave parameters. kλ is computed from the dimensional finite-depth
     # dispersion relation for the chosen frequency.
-    η₀ = 0.1
-    ω = 2.0 # Wave frequency
-    kλ = find_zero(kλ -> g * kλ * tanh(kλ * H) - ω^2, (0.01, 10.0))
-    print("Calculated wave number kλ: ", kλ)
+    η₀_dim = 0.1 # Wave amplitude [m]
+    ω_dim = 2.4 # Angular frequency [rad/s]
+    η₀ = η₀_dim / Lref
+    ω = ω_dim * Tref
+    kλ_dim = find_zero(
+      k -> g * k * tanh(k * H * Lref) - ω_dim^2,
+      (0.01, 10.0),
+    )
+    kλ = kλ_dim * Lref # Nondimensional wavenumber
     ϕ = 0.0
 
     # Post-processing controls and in-memory sweep summary.
@@ -321,14 +357,14 @@ function case_1_length_sweep()
       damp = 5 * H # Inlet and outlet damping length
 
       # Keep a small clearance around the membrane while varying its length.
-      domain = Lm + 0.2 # Length of the required domain
+      domain = Lm + 0.1 # Length of the required domain
       Lf = domain + 2 * damp # Total domain length
 
       # Damping-zone extents for this mesh.
       Lfd = damp
       Ld = Lf - damp
-      Lfd1 = 0.5 * Lm
-      Ld1 = Lf - 0.5 * Lm
+      Lfd1 = 0.5 * H
+      Ld1 = Lf - 0.5 * H
 
       meshpath = WSI2DMesh1.create_mesh(ranks, H, damp, domain, Lm)
 
@@ -337,6 +373,14 @@ function case_1_length_sweep()
         nprocs = MPI.Comm_size(MPI.COMM_WORLD),
         rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
         case = case_name,
+
+        # Reference dimensional state
+        Lref = Lref,
+        Tref = Tref,
+
+        # Physical parameters
+        M = M,
+        τ = τ,
 
         # Geometric parameters
         H = H,
@@ -356,12 +400,6 @@ function case_1_length_sweep()
         t0 = t0,
         tF = tF,
         dt = dt,
-
-        # Physical parameters
-        ρf = ρf,
-        ρs = ρs,
-        g = g,
-        T = T,
 
         # Wave parameters
         kλ = kλ,
