@@ -342,12 +342,12 @@ function wsi3d(distribute, parts, params::WSI3D_params)
 
     # System Solver Definition
     sol_param_fluid_dir = datadir("wsi_3d", "solver_parameters_fluid.xml")
-    fluid_block = LUSolver() #TrilinosSolve(sol_param_fluid_dir)
+    fluid_block = TrilinosSolve(sol_param_fluid_dir)
 
     sol_param_solid_dir = datadir("wsi_3d", "solver_parameters_solid.xml")
-    solid_block = LUSolver() #LUsolver() #TrilinosSolve(sol_param_solid_dir)
+    solid_block = TrilinosSolve(sol_param_solid_dir)
 
-    fs_block = LUSolver() #TrilinosSolve(sol_param_solid_dir)
+    fs_block = TrilinosSolve(sol_param_solid_dir)
 
     coeffs = [
       1.0 1.0 1.0

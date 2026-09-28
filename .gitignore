@@ -16,7 +16,6 @@ slurm_jobs/job*
 *.pvtu
 *.pvd
 *.csv
-*.msh
 *.so
 *.out
 *.log

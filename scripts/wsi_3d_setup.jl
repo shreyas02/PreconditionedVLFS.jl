@@ -132,4 +132,129 @@ function case_1()
   end
 end
 
+# A more comprehensive case with multiple floating membranes
+
+function case_2()
+  with_mpi() do distribute
+
+    # Generate ranks
+    parts = (MPI.Comm_size(MPI.COMM_WORLD), 1)
+    ranks = distribute(LinearIndices((prod(parts),)))
+
+    # Function to run the code
+    function run_src(params::WSI3D_params)
+      solver_stats = wsi3d(distribute, parts, params)
+
+      config_dict = Dict(
+        string(k) => v for (k, v) in DrWatson.struct2dict(params)
+      )
+
+      return merge(
+        config_dict,
+        Dict(
+          "fluid" => solver_stats.fluid,
+          "solid" => solver_stats.solid,
+          "freesurface" => solver_stats.freesurface,
+          "outer" => solver_stats.outer,
+        ),
+      )
+    end
+
+    # Construction of the required parameters
+
+    # Case number
+    case_name = "case_2"
+
+    # Non dimensionalization parameters
+    Lref = 35 # Physical Membrane length
+    g = 9.81 # Acceleration due to gravity
+    Uref = sqrt(g * Lref) # Reference velocity
+    Tref = Lref / Uref # Reference time
+
+    # Geometric parameters
+    H = 50/Lref
+    Lm = 1 # radius of the membrane
+    Lf = 1000/Lref
+    Ly = 400/Lref
+    hs = 0.01/Lref
+
+    # Damping parameters
+    Lfd = 200/Lref
+    Lfd1 = 50/Lref
+    Ld = 800/Lref
+    Ld1 = Lf - 50/Lref
+
+    # Temporal parameters
+    ρ∞ = 0.5
+    t0 = 0.0/Tref
+    tF = 100.0/Tref
+    dt = 0.5/Tref
+
+    # Physical parameters.
+    M = 0.045 # Non dimensionalized reduced mass parameter
+    τ = 0.025 # Non dimensional pretension parameter
+
+    # Wave parameters
+    kλ_dim = 0.125;  kλ = kλ_dim * Lref # Wave number
+    ω_dim = sqrt(g * kλ_dim * tanh(kλ_dim * H * Lref)); ω = ω_dim * Tref # Wave frequency in radians
+    η₀ = 0.01/Lref # surface elevation
+    ϕ = 0 # wave phase difference
+
+    # Mesh generations
+    meshpath = joinpath(@__DIR__, "mesh_wsi_3d_2.msh")
+
+    # Post-processing parameters
+    vtkoutput = true
+
+    case = WSI3D_params(
+      # MPI parameters and case name
+      nprocs = MPI.Comm_size(MPI.COMM_WORLD),
+      rank = MPI.Comm_rank(MPI.COMM_WORLD) + 1,
+      case = case_name,
+
+      # Reference dimensional state
+      Lref = Lref,
+      Tref = Tref,
+
+      # Physical parameters
+      M = M,
+      τ = τ,
+
+      # Geometric parameters
+      H = H,
+      Lm = Lm,
+      Ly = Ly,
+      Lf = Lf,
+      hs = hs,
+      meshpath = meshpath,
+
+      # Damping parameters
+      Lfd = Lfd,
+      Lfd1 = Lfd1,
+      Ld = Ld,
+      Ld1 = Ld1,
+
+      # Temporal parameters
+      ρ∞ = ρ∞,
+      t0 = t0,
+      tF = tF,
+      dt = dt,
+
+      # Wave parameters
+      kλ = kλ,
+      η₀ = η₀,
+      ω = ω,
+      ϕ = ϕ,
+
+      # Post-processing parameters
+      vtkoutput = vtkoutput,
+    )
+
+    path = mkpath("$(datadir("wsi_3d", "case_2"))")
+    filename = savename(case; ignores = [:meshpath])
+
+    produce_or_load(run_src, case, path; filename = filename)
+  end
+end
+
 end
