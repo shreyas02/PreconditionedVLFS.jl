@@ -10,9 +10,9 @@ cd "${ROOT_DIR}"
 
 source ./run_slurm/env.sh
 
-echo "Running WSI 3D test (8 ranks)"
+echo "Running WSI 3D workflow: case_1 and case_2 (${SLURM_NTASKS:-4} ranks)"
 
-srun --mpi=pmix --ntasks=4 julia --project=. \
+srun --mpi=pmix --ntasks="${SLURM_NTASKS:-4}" julia --project=. \
     test/wsi3dtest.jl all \
     > "${ROOT_DIR}/slurm_jobs/wsi_3d_all.log" 2>&1
 
