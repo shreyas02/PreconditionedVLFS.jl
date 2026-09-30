@@ -10,12 +10,12 @@ radius = 35/Lref;
 space = 100/Lref; // diameter plus spacing
 //+
 // Inputs - Partition per unit length
-mesh_sides       = 0.30*Lref;
-mesh_fs_x_top    = 1.00*Lref;
-mesh_fs_x_bottom = 0.5*Lref;
-mesh_fs_y_top    = 1.00*Lref;
-mesh_fs_y_bottom = 0.5*Lref;
-mesh_mem         = 1.00*Lref;
+mesh_sides       = 0.08*Lref;
+mesh_fs_x_top    = 0.20*Lref;
+mesh_fs_x_bottom = 0.04*Lref;
+mesh_fs_y_top    = 0.20*Lref;
+mesh_fs_y_bottom = 0.025*Lref;
+mesh_mem         = 0.15*Lref;
 //+
 // Outter box points
 Point(1) = {0, 0, 0, 1.0};
@@ -101,33 +101,35 @@ Surface Loop(1) = {12, 16, 13, 14, 15, 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 Volume(1) = {1};
 //+
 Transfinite Curve {5, 11, 9, 7} = mesh_sides*length_z Using Progression 1.2; // Sides
-Transfinite Curve {6, 10} = mesh_fs_y_top*length_y Using Progression 1; // freesurface_y_top
-Transfinite Curve {1, 3} = mesh_fs_y_bottom*length_y Using Progression 1; // freesurface_y_bottom
+Transfinite Curve {6} = mesh_fs_y_top*length_y Using Progression 1; // freesurface_y_top
+Transfinite Curve {1, 3, 10} = mesh_fs_y_bottom*length_y Using Progression 1; // freesurface_y_bottom
 Transfinite Curve {12, 8} = mesh_fs_x_top*length_x Using Progression 1; // freesurface_x_top
 Transfinite Curve {4, 2} = mesh_fs_x_bottom*length_x Using Progression 1; // freesurface_x_bottom
 Transfinite Curve {21, 22, 18, 17, 13, 14, 16, 15, 19, 20} = mesh_mem*2*Pi*radius Using Progression 1; // floating_membrane
 //+
-Physical Surface("FloatingSolid", 37) = {6, 7, 8, 9, 10, 1, 2, 3, 4, 5};
-Physical Curve("FloatingSolid", 38) = {20, 16, 14, 18, 22, 21, 17, 13, 15, 19};
+Physical Point("FloatingSolid", 37) = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
+Physical Surface("FloatingSolid", 38) = {6, 7, 8, 9, 10, 1, 2, 3, 4, 5};
+Physical Curve("FloatingSolid", 39) = {20, 16, 14, 18, 22, 21, 17, 13, 15, 19};
 //+
-Physical Surface("FreeSurface", 39) = {17};
-Physical Curve("FreeSurface", 39) = {19, 20, 16, 15, 13, 14, 18, 17, 21, 22, 12, 8};
+Physical Point("FreeSurface", 40) = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
+Physical Surface("FreeSurface", 41) = {17};
+Physical Curve("FreeSurface", 42) = {19, 20, 16, 15, 13, 14, 18, 17, 21, 22, 12, 8};
 //+
-Physical Surface("Inlet", 40) = {13};
-Physical Surface("Outlet", 41) = {15};
+Physical Surface("Inlet", 43) = {13};
+Physical Surface("Outlet", 44) = {15};
 //+
-Physical Surface("SideWalls", 42) = {12, 14};
-Physical Curve("SideWalls", 43) = {5, 12, 11, 7, 8, 9};
+Physical Surface("SideWalls", 45) = {12, 14};
+Physical Curve("SideWalls", 46) = {5, 12, 11, 7, 8, 9};
 //+
-Physical Surface("Bed", 44) = {16};
-Physical Curve("Bed", 45) = {1,3};
-Physical Curve("BedInt", 46) = {4, 2};
-Physical Point("BedInt", 47) = {1, 2, 8, 5};
+Physical Surface("Bed", 47) = {16};
+Physical Curve("Bed", 48) = {1,3};
+Physical Curve("BedInt", 49) = {4, 2};
+Physical Point("BedInt", 50) = {1, 2, 8, 5};
 //+
-Physical Point("LeftPoint", 48) = {6, 3};
-Physical Curve("LeftPoint", 49) = {6};
+Physical Point("LeftPoint", 51) = {6, 3};
+Physical Curve("LeftPoint", 52) = {6};
 //+
-Physical Point("RightPoint", 50) = {7, 4};
-Physical Curve("RightPoint", 51) = {10};
+Physical Point("RightPoint", 53) = {7, 4};
+Physical Curve("RightPoint", 54) = {10};
 //+
-Physical Volume("Domain", 52) = {1};
+Physical Volume("Domain", 55) = {1};

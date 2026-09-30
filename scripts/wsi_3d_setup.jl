@@ -3,9 +3,28 @@ module WSI3DSetup
 using PreconditionedVLFS
 using PartitionedArrays, MPI
 using DrWatson, TimerOutputs
+using SHA
 
 include("mesh_wsi_3d_1.jl")
 using .WSI3DMesh1
+
+function compact_savename(params::WSI3D_params)
+  config = sort!(
+    collect(DrWatson.struct2dict(params));
+    by = pair -> string(first(pair)),
+  )
+  digest = bytes2hex(sha1(repr(config)))[1:10]
+
+  return savename(
+    Dict(
+      :case => params.case,
+      :nprocs => params.nprocs,
+      :rank => params.rank,
+      :id => digest,
+    ),
+    "jld2",
+  )
+end
 
 # A simple case that can be run easily on a laptop.
 
@@ -126,7 +145,7 @@ function case_1()
     )
 
     path = mkpath("$(datadir("wsi_3d", "case_1"))")
-    filename = savename(case; ignores = [:meshpath])
+    filename = compact_savename(case)
 
     produce_or_load(run_src, case, path; filename = filename)
   end
@@ -187,7 +206,7 @@ function case_2()
     # Temporal parameters
     ρ∞ = 0.5
     t0 = 0.0/Tref
-    tF = 100.0/Tref
+    tF = 500.0/Tref
     dt = 0.5/Tref
 
     # Physical parameters.
@@ -251,7 +270,7 @@ function case_2()
     )
 
     path = mkpath("$(datadir("wsi_3d", "case_2"))")
-    filename = savename(case; ignores = [:meshpath])
+    filename = compact_savename(case)
 
     produce_or_load(run_src, case, path; filename = filename)
   end

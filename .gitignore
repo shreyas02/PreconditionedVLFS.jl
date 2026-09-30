@@ -22,7 +22,7 @@ slurm_jobs/job*
 *.tgz
 *.err
 *.jld2
-data/**/*.msh
+*.msh
 output*.txt
 LocalPreferences.toml
 Manifest.toml

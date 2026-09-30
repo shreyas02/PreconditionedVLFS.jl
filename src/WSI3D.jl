@@ -99,6 +99,7 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     reffeᵤ = ReferenceFE(lagrangian, VectorValue{3,Float64}, fe_order)
     reffeₚ = ReferenceFE(lagrangian, Float64, fe_order - 1)
     reffeₛ = ReferenceFE(lagrangian, Float64, fe_order)
+    reffefs = ReferenceFE(lagrangian, Float64, fe_order - 1)
 
     # Define triangulation and integration measure
     degree = 2 * fe_order + 1
@@ -155,7 +156,7 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     ) # Test function for Solid Displacement
     Sfs = TestFESpace(
       Ωfs,
-      reffeₛ,
+      reffefs,
       dirichlet_tags = ["LeftPoint", "RightPoint", "!FreeSurface"],
     ) # Test function for free surface elevation
     Y = MultiFieldFESpace([S, Sfs, V, Q]; style = mfs) # Test Multifield
