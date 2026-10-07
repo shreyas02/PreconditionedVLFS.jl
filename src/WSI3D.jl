@@ -54,8 +54,9 @@
   vtkoutput::Bool = false
 end
 
-function ramp(time, Tref; t_ramp = 2.0)
-  return clamp(time / (t_ramp / Tref), 0.0, 1.0)
+function ramp(time, Tref; t_ramp = 20.0)
+  ξ = clamp(time / (t_ramp / Tref), 0.0, 1.0)
+  return ξ^3 * (10.0 - 15.0*ξ + 6.0*ξ^2)
 end
 
 #################################
@@ -97,9 +98,9 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     # Define reference FE (Q2/P1(disc) pair)
     fe_order = 2
     reffeᵤ = ReferenceFE(lagrangian, VectorValue{3,Float64}, fe_order)
-    reffeₚ = ReferenceFE(lagrangian, Float64, fe_order - 1)
+    reffeₚ = ReferenceFE(lagrangian, Float64, fe_order - 1;space=:P)
     reffeₛ = ReferenceFE(lagrangian, Float64, fe_order)
-    reffefs = ReferenceFE(lagrangian, Float64, fe_order - 1)
+    reffefs = ReferenceFE(lagrangian, Float64, fe_order)
 
     # Define triangulation and integration measure
     degree = 2 * fe_order + 1
@@ -147,7 +148,7 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     Q = TestFESpace(
       Ωf,
       reffeₚ,
-      conformity = :H1,
+      conformity=:H1,
     ) # Test function for Pressure
     S = TestFESpace(
       Ωs,
@@ -289,6 +290,12 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     nᵥ = VectorValue(0.0, 0.0, 1.0) # Along the Z direction
     nᵤ = VectorValue(1.0, 0.0, 0.0) # Along the X direction
     ∇Γ(u) = ∇(u) - (∇(u) ⋅ nᵥ) * nᵥ
+    Cω = 1.0e0
+    γw_loc = map(local_views(Ωf), local_views(dΩf)) do Ωf_loc, dΩf_loc
+      cell_vol = get_array(∫(1)dΩf_loc)
+      CellField(lazy_map(V -> Cω * V^(2/3) / dt, cell_vol),Ωf_loc,)
+    end
+    γw = GridapDistributed.DistributedCellField(γw_loc, Ωf)
 
     # Weak form definition
     jac(t, (dd, dη, du, dp), (s, γ, v, q)) = (
@@ -305,7 +312,10 @@ function wsi3d(distribute, parts, params::WSI3D_params)
       ∫(dp * s * (ns ⋅ nᵥ))dGs +
       ∫(dη * γ)dΣfs -
       ∫(dp * (∇(γ) ⋅ nᵥ))dΩfs +
-      ∫(dp * γ * (nfs ⋅ nᵥ))dGfs
+      ∫(dp * γ * (nfs ⋅ nᵥ))dGfs +
+      ∫(γw * (∇ ⋅ du) * (∇ ⋅ v))dΩf +
+      ∫(γw * (∇ ⋅ du) * (∇(s) ⋅ nᵥ))dΩs +
+      ∫(γw * (∇ ⋅ du) * (∇(γ) ⋅ nᵥ))dΩfs
     )
     jac_t(t, (dtd, dtη, dtu, dtp), (s, γ, v, q)) = (
       ∫(v ⋅ dtu)dΩf -
@@ -375,8 +385,8 @@ function wsi3d(distribute, parts, params::WSI3D_params)
       restart = false,
       m_add = 1,
       maxiter = 1000,
-      atol = 1e-8,
-      rtol = 1.0e-5,
+      atol = 1e-16,
+      rtol = 1.0e-8,
       verbose = i_am_main(ranks),
     )
     sys_solver = DiscreteDampingSolver(solver, alpha, x_base)

@@ -198,13 +198,13 @@ function case_2()
     hs = 0.01/Lref
 
     # Damping parameters
-    Lfd = 200/Lref
-    Lfd1 = 50/Lref
-    Ld = 800/Lref
-    Ld1 = Lf - 50/Lref
+    Lfd = 62*π/Lref
+    Lfd1 = 14*π/Lref
+    Ld = 256*π/Lref
+    Ld1 = Lf - 14*π/Lref
 
     # Temporal parameters
-    ρ∞ = 0.5
+    ρ∞ = 0.00
     t0 = 0.0/Tref
     tF = 500.0/Tref
     dt = 0.5/Tref
@@ -214,7 +214,7 @@ function case_2()
     τ = 0.025 # Non dimensional pretension parameter
 
     # Wave parameters
-    kλ_dim = 0.125;  kλ = kλ_dim * Lref # Wave number
+    kλ_dim = 0.0625;  kλ = kλ_dim * Lref # Wave number
     ω_dim = sqrt(g * kλ_dim * tanh(kλ_dim * H * Lref)); ω = ω_dim * Tref # Wave frequency in radians
     η₀ = 0.01/Lref # surface elevation
     ϕ = 0 # wave phase difference
