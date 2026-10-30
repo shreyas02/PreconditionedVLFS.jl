@@ -15,6 +15,7 @@ export periodic3D, Periodic3D_params
 # Auxiliary functions
 export TrilinosSolve
 export DiscreteDampingSolver
+export SolverWrapper
 export get_triangulations
 export select_triangulation
 export get_interface_triangulation_side

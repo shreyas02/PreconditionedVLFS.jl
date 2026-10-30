@@ -233,22 +233,22 @@ function toyrichardson(ω::Float64, params::ToyRichardsonParams)
   xₜ = solve(solver_ode, op, t0, tF, (x_initial, v_initial, a_initial))
 
   # Post processing begin
-  @vtk postprocess_dir = datadir("toy_richardson", "postprocess")
-  @vtk vtk_dir = mkpath("$(postprocess_dir)/tmp")
+  @vtk postprocess_dir = mkpath(datadir("toy_richardson", case, "postprocess"))
+  @vtk vtk_dir = mkpath(joinpath(postprocess_dir, "tmp"))
 
   # Creating pvd files
-  @vtk pvd_Ωf = paraview_collection("$(postprocess_dir)/Fluids_in_2D")
-  @vtk pvd_Σ = paraview_collection("$(postprocess_dir)/Solids_in_2D")
+  @vtk pvd_Ωf = paraview_collection(joinpath(postprocess_dir, "Fluids_in_2D"))
+  @vtk pvd_Σ = paraview_collection(joinpath(postprocess_dir, "Solids_in_2D"))
 
   # Storing initial conditions in the pvd file
   @vtk pvd_Ωf[0] = createvtk(
     Ωf,
-    "$(vtk_dir)/results_Fluids_in_2D_0",
+    joinpath(vtk_dir, "results_Fluids_in_2D_0"),
     cellfields = ["u" => x_initial[1], "pressure" => x_initial[2]],
   )
   @vtk pvd_Σ[0] = createvtk(
     Σ,
-    "$(vtk_dir)/results_Solids_in_2D_0",
+    joinpath(vtk_dir, "results_Solids_in_2D_0"),
     cellfields = ["displacement" => x_initial[3]],
   )
 
@@ -256,12 +256,12 @@ function toyrichardson(ω::Float64, params::ToyRichardsonParams)
   for (tn, (uhn, phn, dhn)) in xₜ
     @vtk pvd_Ωf[tn] = createvtk(
       Ωf,
-      "$(vtk_dir)/results_Fluids_in_2D_$tn",
+      joinpath(vtk_dir, "results_Fluids_in_2D_$tn"),
       cellfields = ["u" => uhn, "pressure" => phn],
     )
     @vtk pvd_Σ[tn] = createvtk(
       Σ,
-      "$(vtk_dir)/results_Solids_in_2D_$tn",
+      joinpath(vtk_dir, "results_Solids_in_2D_$tn"),
       cellfields = ["displacement" => dhn],
     )
     println("Solving for time step $timestep")

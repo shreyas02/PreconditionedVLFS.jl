@@ -34,7 +34,7 @@
     dt *
     (1 / 2 - (2 * ρ∞ - 1) / (1 + ρ∞) + ρ∞ / (1 + ρ∞)) *
     (1 - (ρ∞ / (1 + ρ∞)))
-  )
+  ) + 2 * ρf * g * dt / ((1 + ρ∞) * (3 - ρ∞))
   αs::Float64 = 0.0
 
   # Postprocessing Parameters
@@ -93,47 +93,28 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
     add_tag_from_tags!(labels, "Bed", [1, 5, 2])
     add_tag_from_tags!(labels, "LeftPoint", [3])
     add_tag_from_tags!(labels, "RightPoint", [4])
-    Geometry.add_tag_from_tags_complementary!(
-      labels,
-      "!!FloatingSolid",
-      ["FloatingSolid"],
-    )
-    Geometry.add_tag_from_tags_setdiff!(
-      labels,
-      "!FloatingSolid",
-      ["!!FloatingSolid"],
-      ["LeftPoint", "RightPoint"],
-    )
-
-    # Define reference FE (P2/P1 pair)
+    # Same mixed spaces as WSI; the entire top boundary is a membrane.
     fe_order = 2
-    reffeᵤ = ReferenceFE(lagrangian, VectorValue{2,Float64}, fe_order)
-    reffeₚ = ReferenceFE(lagrangian, Float64, fe_order - 1)
-    reffeₛ = ReferenceFE(lagrangian, Float64, fe_order)
+    reffeᵤ = ReferenceFE(raviart_thomas, Float64, fe_order)
+    reffeₚ = ReferenceFE(lagrangian, Float64, fe_order)
 
-    # Define triangulation and integration measure
-    degree = 2 * fe_order + 1
-
-    Ωs = get_triangulations(model, "FloatingSolid")
-    dΩs = Measure(Ωs, degree)
-
+    degree = 2 * fe_order + 2
     Ωf = Triangulation(model)
     dΩf = Measure(Ωf, degree)
 
     Σs = BoundaryTriangulation(model, tags = ["FloatingSolid"])
     dΣs = Measure(Σs, degree)
+    Λ = SkeletonTriangulation(Σs)
+    dΛ = Measure(Λ, degree)
+    nΛ = get_normal_vector(Λ)
 
-    # Define Test FE Functions
-    mfs = BlockMultiFieldStyle(2, (1, 2), (1, 2, 3))
-    V = TestFESpace(
-      Ωf,
-      reffeᵤ,
-      dirichlet_tags = ["Bed"],
-      dirichlet_masks = [(false, true)],
-    )
-    Q = TestFESpace(Ωf, reffeₚ, conformity = :H1)
-    S = TestFESpace(Ωs, reffeₛ, dirichlet_tags = ["!FloatingSolid"])
-    Y = MultiFieldFESpace([S, V, Q]; style = mfs)
+    # The fluid block contains the multiplier, velocity, and pressure.
+    mfs = BlockMultiFieldStyle(2, (1, 3), (1, 2, 3, 4))
+    V = TestFESpace(model, reffeᵤ, conformity = :HDiv, dirichlet_tags = ["Bed"])
+    Q = TestFESpace(Ωf, reffeₚ, conformity = :L2)
+    E = TestFESpace(Σs, reffeₚ, conformity = :H1)
+    L = TestFESpace(Σs, reffeₚ, conformity = :L2)
+    Y = MultiFieldFESpace([E, L, V, Q]; style = mfs)
 
     # Define pressure boundary condition functions
     ux(t, x) = (
@@ -159,52 +140,46 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
     float_solid(t) = x -> η₀ * cos(kλ * x[1] - ω * t + ϕ)
     zero_scalar(t) = x -> 0.0
 
-    # Dual use (vel/acc) terms
-    pressure_vel_acc(t) = x -> 0.0 # Initial vel/acc pressure
-    velocity_vel_acc(t) = x -> VectorValue(0.0, 0.0)
-    sol_dis_vel_acc(t) = x -> 0.0 # Initial vel/acc solid displacement
+    zero_vector(t) = x -> VectorValue(0.0, 0.0)
+    # The multiplier is the pressure in excess of hydrostatic restoring pressure.
+    membrane_pressure(t) = x -> pres_field(t)(x) - ρf * g * float_solid(t)(x)
 
-    # Define Trial FE Functions
-    U = TransientTrialFESpace(V, [u_field]) # Trial fluid velocity
-    P = TransientTrialFESpace(Q) # Trial Pressure
-    D = TransientTrialFESpace(S, [zero_scalar]) # Trial membrane displacement
-    X = MultiFieldFESpace([D, U, P]; style = mfs) # Trial Multifield
+    # Periodicity is inherited from the model; solid and multiplier live on its surface.
+    U = TransientTrialFESpace(V, [zero_vector])
+    P = TransientTrialFESpace(Q)
+    Et = TransientTrialFESpace(E)
+    Lt = TransientTrialFESpace(L)
+    X = MultiFieldFESpace([Et, Lt, U, P]; style = mfs)
 
-    # Damping function
-    α(x) = 1.0
-    αvec(x) = VectorValue(α(x), α(x))
-    alpha = interpolate_everywhere([α, αvec, α], X(0.0))
-    x_base(t) = interpolate_everywhere(
-      [float_solid(t), u_field(t), pres_field(t)],
-      X(t),
-    )
+    nᵥ = VectorValue(0.0, 1.0)
 
-    nᵥ = VectorValue(0.0, 1.0) # Along the Y direction
-    nᵤ = VectorValue(1.0, 0.0) # Along the X direction
-
-    # Weak form definition
-    jac(t, (dd, du, dp), (s, v, q)) = (
+    # Dimensional WSI formulation, with no uncovered free surface or damping zones.
+    jac(t, (dη, dλ, du, dp), (s, μ, v, q)) = (
+      # Membrane dynamics
+      ∫(T * (∇(dη) ⋅ ∇(s)))dΣs -
+      ∫(dλ * s)dΣs +
+      # Robin interface: kinematics and membrane traction
+      ∫(αf * μ * (du ⋅ nᵥ))dΣs +
+      ∫(T * (∇(dη) ⋅ ∇(μ)))dΣs -
+      ∫(T * (jump(μ) * nΛ.⁺) ⋅ mean(∇(dη)))dΛ -
+      ∫(dλ * μ)dΣs +
+      # Fluid momentum and incompressibility
       ∫(-(∇ ⋅ v) * dp)dΩf +
-      ∫((∇ ⋅ du) * q)dΩf +
-      ∫(T * ((∇(dd) ⋅ nᵤ) * (∇(v ⋅ nᵥ) ⋅ nᵤ)))dΣs +
-      ∫(ρf * g * dd * (v ⋅ nᵥ))dΣs +
-      ∫(αf * (du ⋅ nᵥ) * (v ⋅ nᵥ))dΣs +
-      ∫(T * (∇(dd) ⋅ nᵤ) * (∇(s) ⋅ nᵤ))dΣs +
-      ∫(ρf * g * dd * s)dΣs -
-      ∫(dp * (∇(s) ⋅ nᵥ))dΩs
+      ∫((ρf * g * dη + dλ) * (v ⋅ nᵥ))dΣs +
+      ∫((∇ ⋅ du) * q)dΩf
     )
-    jac_t(t, (dtd, dtu, dtp), (s, v, q)) = (
-      ∫(ρf * (v ⋅ dtu))dΩf -
-      ∫(αf * dtd * (v ⋅ nᵥ))dΣs +
-      ∫(ρf * (dtu ⋅ nᵥ) * s)dΩs
+    jac_t(t, (dtη, dtλ, dtu, dtp), (s, μ, v, q)) = (
+      ∫(-αf * dtη * μ)dΣs +
+      ∫(ρf * (v ⋅ dtu))dΩf
     )
-    jac_tt(t, (dttd, dttu, dttp), (s, v, q)) = (
-      ∫(ρs * hs * (v ⋅ nᵥ) * dttd)dΣs +
-      ∫(ρs * hs * s * dttd)dΣs
+    jac_tt(t, (dttη, dttλ, dttu, dttp), (s, μ, v, q)) = (
+      ∫(ρs * hs * dttη * s)dΣs +
+      ∫(ρs * hs * dttη * μ)dΣs
     )
-    l(t, (s, v, q)) = (
-      ∫((v ⋅ nᵥ) * -ρf * g + q * 0.0)dΩf +
-      ∫(s * -ρf * g)dΩs
+    l(t, (s, μ, v, q)) = (
+      ∫(-ρf * g * (v ⋅ nᵥ))dΩf +
+      ∫(0.0 * s)dΣs + ∫(0.0 * μ)dΣs +
+      ∫(0.0 * q)dΩf + ∫(0.0 * jump(μ))dΛ
     )
 
     # Build affine FE operator
@@ -256,22 +231,22 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
       rtol = 1.0e-7,
       verbose = i_am_main(ranks),
     )
-    sys_solver = DiscreteDampingSolver(solver, alpha, x_base)
+    sys_solver = SolverWrapper(solver)
 
     # ODE Solver
     solver_ode = Gridap.ODEs.GeneralizedAlpha2(sys_solver, dt, ρ∞)
 
     # Imposing initial conditions
     x_initial = interpolate_everywhere(
-      [float_solid(t0), u_field(t0), pres_field(t0)],
+      [float_solid(t0), membrane_pressure(t0), u_field(t0), pres_field(t0)],
       X(t0),
     )
     v_initial = interpolate_everywhere(
-      [sol_dis_vel_acc(t0), velocity_vel_acc(t0), pressure_vel_acc(t0)],
+      [zero_scalar(t0), zero_scalar(t0), zero_vector(t0), zero_scalar(t0)],
       X(t0),
     )
     a_initial = interpolate_everywhere(
-      [sol_dis_vel_acc(t0), velocity_vel_acc(t0), pressure_vel_acc(t0)],
+      [zero_scalar(t0), zero_scalar(t0), zero_vector(t0), zero_scalar(t0)],
       X(t0),
     )
 
@@ -282,65 +257,57 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
       @vtk postprocess_dir = mkpath(
         datadir("periodic2d", case, "postprocess"),
       )
-      @vtk vtk_dir = mkpath("$(postprocess_dir)/tmp")
+      @vtk vtk_dir = mkpath(joinpath(postprocess_dir, "tmp"))
 
       # Creating pvd files
       @vtk pvd_Ωf = createpvd(
         Ωf,
         ranks,
-        "$(postprocess_dir)/fluids_in_twoD",
+        joinpath(postprocess_dir, "fluids_in_twoD"),
       )
       @vtk pvd_Σs = createpvd(
         Σs,
         ranks,
-        "$(postprocess_dir)/solids_in_twoD",
+        joinpath(postprocess_dir, "solids_in_twoD"),
       )
 
       # Storing initial conditions in the pvd file
-      @vtk pvd_Ωf[0] = createvtk(
+      @vtk pvd_Ωf[t0] = createvtk(
         Ωf,
-        "$(vtk_dir)/results_fluids_in_twoD_0",
-        cellfields = ["u" => x_initial[2], "pressure" => x_initial[3]],
+        joinpath(vtk_dir, "results_fluids_in_twoD_0"),
+        cellfields = ["u" => x_initial[3], "pressure" => x_initial[4]],
       )
-      @vtk pvd_Σs[0] = createvtk(
+      @vtk pvd_Σs[t0] = createvtk(
         Σs,
-        "$(vtk_dir)/results_solids_in_twoD_0",
-        cellfields = ["displacement" => x_initial[1]],
+        joinpath(vtk_dir, "results_solids_in_twoD_0"),
+        cellfields = ["displacement" => x_initial[1], "membrane_pressure" => x_initial[2]],
       )
     end # Ending the postprocessing initial values timer
   end # Ending the model and setup timer
 
   timestep = 0
-  n_timesteps = round(Int, (tF - t0) / dt)
   @timeit to "Time Stepping Loop Aggregate" begin
     solve_timer = begin_timed_section!(to, "First solve")
     # Solving and storing results in the pvd file
     with_logger(SimpleLogger(stderr, Logging.Error)) do
-      for (tn, (dhn, uhn, phn)) in xₜ
+      for (tn, (ηhn, λhn, uhn, phn)) in xₜ
         @vtk pvd_Ωf[tn] = createvtk(
           Ωf,
-          "$(vtk_dir)/results_fluids_in_twoD_$tn",
+          joinpath(vtk_dir, "results_fluids_in_twoD_$tn"),
           cellfields = ["u" => uhn, "pressure" => phn],
         )
         @vtk pvd_Σs[tn] = createvtk(
           Σs,
-          "$(vtk_dir)/results_solids_in_twoD_$tn",
-          cellfields = ["displacement" => dhn],
+          joinpath(vtk_dir, "results_solids_in_twoD_$tn"),
+          cellfields = ["displacement" => ηhn, "membrane_pressure" => λhn],
         )
-        if solve_timer !== nothing
-          end_timed_section!(to, solve_timer)
-          solve_timer = nothing
-        end
+        end_timed_section!(to, solve_timer)
         i_am_main(ranks) && println("$(timestep + 1) timestep solved")
         timestep += 1
-        if timestep == n_timesteps - 1
-          solve_timer = begin_timed_section!(to, "Subsequent Solves")
-        end
+        solve_timer = begin_timed_section!(to, "Subsequent Solves")
       end
     end
-    if solve_timer !== nothing
-      end_timed_section!(to, solve_timer)
-    end
+    end_timed_section!(to, solve_timer)
   end # Ending the time stepping loop timer
 
   @timeit to "Saving pvds" begin
