@@ -34,6 +34,23 @@ function Gridap.Algebra.solve!(x::AbstractVector, ns::SolverWrapperNumericalSetu
   return x
 end
 
+"""
+    safeintegral(f, dΣ)
+
+Integrate a distributed surface field, skipping empty local integration domains.
+This avoids evaluating incompatible placeholder bases on empty surface partitions.
+"""
+function safeintegral(f, dΣ)
+  contributions = map(local_views(f), local_views(dΣ)) do f_loc, measure_loc
+    quad = Gridap.CellData.get_cell_quadrature(measure_loc)
+    if num_cells(get_triangulation(quad)) == 0
+      return Gridap.CellData.DomainContribution()
+    end
+    return ∫(f_loc) * measure_loc
+  end
+  return GridapDistributed.DistributedDomainContribution(contributions)
+end
+
 # Macro to conditionally execute code for vtk output
 macro vtk(expr)
   return esc(

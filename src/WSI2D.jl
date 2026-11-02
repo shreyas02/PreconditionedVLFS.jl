@@ -23,9 +23,7 @@
 
   # Damping Parameters (non-dimensionalized)
   Lfd::Float64
-  Lfd1::Float64
   Ld::Float64
-  Ld1::Float64
 
   # Wave Parameters (non-dimensionalized)
   kλ::Float64
@@ -215,17 +213,18 @@ function wsi2d(distribute, parts, params::WSI2D_params)
       ∫(τ * (∇(dη) ⋅ ∇(s)))dΣs -
       ∫(dλ * s)dΣs +
       # Free surface solve (γ): kinematics
-      ∫(-(du ⋅ nᵥ) * γ)dΣfs +
+      safeintegral(-(du ⋅ nᵥ) * γ, dΣfs) +
       # Fluid solve (μ): Robin interface (Dirichlet)
-      ∫(αf * (μ * (du ⋅ nᵥ)))dΣs +
+      safeintegral(αf * (μ * (du ⋅ nᵥ)), dΣs) +
       # Fluid solve (μ): Robin interface (Neumann)
       ∫(τ * (∇(dη) ⋅ ∇(μ)))dΣs -
       ∫(τ * (jump(μ) * nΛ.⁺) ⋅ mean(∇(dη)))dΛ -
       ∫(dλ * μ)dΣs +
       # Fluid solve (v):
       ∫(-(∇ ⋅ v) * dp)dΩf +
-      ∫(dζ * (v ⋅ nᵥ))dΣfs +
-      ∫(dη * (v ⋅ nᵥ))dΣs + ∫(dλ * (v ⋅ nᵥ))dΣs +
+      safeintegral(dζ * (v ⋅ nᵥ), dΣfs) +
+      safeintegral(dη * (v ⋅ nᵥ), dΣs) +
+      safeintegral(dλ * (v ⋅ nᵥ), dΣs) +
       # Fluid solve (q): incompressibility
       ∫((∇ ⋅ du) * q)dΩf +
       # Fluid velocity damping
@@ -250,8 +249,8 @@ function wsi2d(distribute, parts, params::WSI2D_params)
     l(t, (s, γ, μ, v, q)) = (
       # Fluid solve (v): gravity and prescribed inlet/outlet pressure
       ∫((v ⋅ nᵥ) * -1.0)dΩf -
-      ∫(pres_field(t) * (v ⋅ (-nᵤ)))dΣinlet -
-      ∫(pres_field(t) * (v ⋅ nᵤ))dΣoutlet +
+      safeintegral(pres_field(t) * (v ⋅ (-nᵤ)), dΣinlet) -
+      safeintegral(pres_field(t) * (v ⋅ nᵤ), dΣoutlet) +
       # Fluid velocity damping
       ∫(σ * (u_field(t) ⋅ v))dΩf +
       # Free surface damping
@@ -278,12 +277,12 @@ function wsi2d(distribute, parts, params::WSI2D_params)
 
     # System Solver Definition
     sol_param_fluid_dir = datadir("wsi_2d", "solver_parameters_fluid.xml")
-    fluid_block = LUSolver() # TrilinosSolve(sol_param_fluid_dir)
+    fluid_block = TrilinosSolve(sol_param_fluid_dir)
 
     sol_param_solid_dir = datadir("wsi_2d", "solver_parameters_solid.xml")
-    solid_block = LUSolver() # TrilinosSolve(sol_param_solid_dir)
+    solid_block = TrilinosSolve(sol_param_solid_dir)
 
-    fs_block = LUSolver() # TrilinosSolve(sol_param_solid_dir)
+    fs_block = TrilinosSolve(sol_param_solid_dir)
 
     coeffs = [
       1.0 1.0 1.0

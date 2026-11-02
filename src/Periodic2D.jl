@@ -159,13 +159,13 @@ function periodic2D(distribute, parts, params::Periodic2D_params)
       ∫(T * (∇(dη) ⋅ ∇(s)))dΣs -
       ∫(dλ * s)dΣs +
       # Robin interface: kinematics and membrane traction
-      ∫(αf * μ * (du ⋅ nᵥ))dΣs +
+      safeintegral(αf * μ * (du ⋅ nᵥ), dΣs) +
       ∫(T * (∇(dη) ⋅ ∇(μ)))dΣs -
       ∫(T * (jump(μ) * nΛ.⁺) ⋅ mean(∇(dη)))dΛ -
       ∫(dλ * μ)dΣs +
       # Fluid momentum and incompressibility
       ∫(-(∇ ⋅ v) * dp)dΩf +
-      ∫((ρf * g * dη + dλ) * (v ⋅ nᵥ))dΣs +
+      safeintegral((ρf * g * dη + dλ) * (v ⋅ nᵥ), dΣs) +
       ∫((∇ ⋅ du) * q)dΩf
     )
     jac_t(t, (dtη, dtλ, dtu, dtp), (s, μ, v, q)) = (

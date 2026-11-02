@@ -24,9 +24,7 @@
 
   # Damping Parameters (non-dimensionalized)
   Lfd::Float64
-  Lfd1::Float64
   Ld::Float64
-  Ld1::Float64
 
   # Temporal parameters (non-dimensionalized)
   ρ∞::Float64
@@ -75,7 +73,7 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     )
 
     # Define reference FE
-    fe_order = 1
+    fe_order = 2
     reffeᵤ = ReferenceFE(raviart_thomas, Float64, fe_order)
     reffeₚ = ReferenceFE(lagrangian, Float64, fe_order)
 
@@ -216,17 +214,18 @@ function wsi3d(distribute, parts, params::WSI3D_params)
       ∫(τ * (∇(dη) ⋅ ∇(s)))dΣs -
       ∫(dλ * s)dΣs +
       # Free surface solve (γ): kinematics
-      ∫((-du ⋅ nᵥ) * γ)dΣfs +
+      safeintegral((-γ * nᵥ) ⋅ du, dΣfs) +
       # Fluid solve (μ): Robin interface (Dirichlet)
-      ∫(αf * (μ * (du ⋅ nᵥ)))dΣs +
+      safeintegral(((αf * μ) * nᵥ) ⋅ du, dΣs) +
       # Fluid solve (μ): Robin interface (Neumann)
       ∫(τ * (∇(dη) ⋅ ∇(μ)))dΣs -
-      ∫(τ * (jump(μ*nΛ)) ⋅ mean(∇(dη)))dΛ -
+      ∫(τ * (jump(μ) * nΛ.⁺) ⋅ mean(∇(dη)))dΛ -
       ∫(dλ * μ)dΣs +
       # Fluid solve (v):
       ∫(-(∇ ⋅ v) * dp)dΩf +
-      ∫(dζ * (v ⋅ nᵥ))dΣfs +
-      ∫(dη * (v ⋅ nᵥ))dΣs + ∫(dλ * (v ⋅ nᵥ))dΣs +
+      safeintegral((dζ * nᵥ) ⋅ v, dΣfs) +
+      safeintegral((dη * nᵥ) ⋅ v, dΣs) +
+      safeintegral((dλ * nᵥ) ⋅ v, dΣs) +
       # Fluid solve (q): incompressibility
       ∫((∇ ⋅ du) * q)dΩf +
       # Fluid velocity damping
@@ -251,8 +250,8 @@ function wsi3d(distribute, parts, params::WSI3D_params)
     l(t, (s, γ, μ, v, q)) = (
       # Fluid solve (v): gravity and prescribed inlet/outlet pressure
       ∫((v ⋅ nᵥ) * -1.0)dΩf -
-      ∫(pres_field(t) * (v ⋅ (-nᵤ)))dΣinlet -
-      ∫(pres_field(t) * (v ⋅ nᵤ))dΣoutlet +
+      safeintegral(pres_field(t) * (v ⋅ (-nᵤ)), dΣinlet) -
+      safeintegral(pres_field(t) * (v ⋅ nᵤ), dΣoutlet) +
       # Fluid velocity damping
       ∫(σ * (u_field(t) ⋅ v))dΩf +
       # Free surface damping
