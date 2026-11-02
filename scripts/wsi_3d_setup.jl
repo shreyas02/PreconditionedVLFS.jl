@@ -74,9 +74,7 @@ function case_1()
 
     # Damping parameters
     Lfd = 3 * pi/Lref
-    Lfd1 = 0.5 * pi/Lref
     Ld = 7.5 * pi/Lref
-    Ld1 = Lf - 0.5/Lref
 
     # Temporal parameters
     ρ∞ = 0.5
@@ -124,9 +122,7 @@ function case_1()
 
       # Damping parameters
       Lfd = Lfd,
-      Lfd1 = Lfd1,
       Ld = Ld,
-      Ld1 = Ld1,
 
       # Temporal parameters
       ρ∞ = ρ∞,
@@ -199,9 +195,7 @@ function case_2()
 
     # Damping parameters
     Lfd = 62*π/Lref
-    Lfd1 = 14*π/Lref
     Ld = 256*π/Lref
-    Ld1 = Lf - 14*π/Lref
 
     # Temporal parameters
     ρ∞ = 0.00
@@ -249,9 +243,7 @@ function case_2()
 
       # Damping parameters
       Lfd = Lfd,
-      Lfd1 = Lfd1,
       Ld = Ld,
-      Ld1 = Ld1,
 
       # Temporal parameters
       ρ∞ = ρ∞,

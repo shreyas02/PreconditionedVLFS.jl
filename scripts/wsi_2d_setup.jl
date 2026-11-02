@@ -59,9 +59,7 @@ function case_1()
 
     # Damping-zone extents used by the inlet/outlet absorbing layers.
     Lfd = damp
-    Lfd1 = 0.5 * Lm
     Ld = Lf - damp
-    Ld1 = Lf - 0.5 * Lm
 
     # Time integration parameters.
     ρ∞ = 0.5
@@ -113,9 +111,7 @@ function case_1()
 
       # Damping parameters
       Lfd = Lfd,
-      Lfd1 = Lfd1,
       Ld = Ld,
-      Ld1 = Ld1,
 
       # Wave parameters
       kλ = kλ,
@@ -187,9 +183,7 @@ function case_1_density_sweep()
 
     # Damping-zone extents used by the inlet/outlet absorbing layers.
     Lfd = damp
-    Lfd1 = 0.5 * H
     Ld = Lf - damp
-    Ld1 = Lf - 0.5 * H
 
     # Time integration parameters.
     ρ∞ = 0.5
@@ -245,9 +239,7 @@ function case_1_density_sweep()
 
         # Damping parameters
         Lfd = Lfd,
-        Lfd1 = Lfd1,
         Ld = Ld,
-        Ld1 = Ld1,
 
         # Temporal parameters
         ρ∞ = ρ∞,
@@ -363,8 +355,6 @@ function case_1_length_sweep()
       # Damping-zone extents for this mesh.
       Lfd = damp
       Ld = Lf - damp
-      Lfd1 = 0.5 * H
-      Ld1 = Lf - 0.5 * H
 
       meshpath = WSI2DMesh1.create_mesh(ranks, H, damp, domain, Lm)
 
@@ -391,9 +381,7 @@ function case_1_length_sweep()
 
         # Damping parameters
         Lfd = Lfd,
-        Lfd1 = Lfd1,
         Ld = Ld,
-        Ld1 = Ld1,
 
         # Temporal parameters
         ρ∞ = ρ∞,
