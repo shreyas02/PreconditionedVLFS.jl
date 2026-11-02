@@ -31,7 +31,5 @@ gmsh_jll = "630162c2-fc9b-58b3-9910-8442a8a132e6"
 [compat]
 DrWatson = "2.19.1"
 FixedPointNumbers = "0.8.5"
-Gridap = "0.19.6"
 GridapDistributed = "0.4.10"
-GridapSolvers = "0.6.1"
 gmsh_jll = "=4.9.3"
